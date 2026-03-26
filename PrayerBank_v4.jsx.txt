@@ -1,0 +1,1893 @@
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
+
+const GOLD = "#c9a84c";
+const GOLD_DIM = "rgba(201,168,76,0.25)";
+const GOLD_FAINT = "rgba(201,168,76,0.08)";
+const GOLD_GLOW = "rgba(201,168,76,0.15)";
+const CRIMSON = "#b5372a";
+const TEAL = "#2a8a7a";
+
+// ═══════════════════════════════════════════════════════════
+// UI LABELS
+// ═══════════════════════════════════════════════════════════
+const UI = {
+  fr: {
+    title: "PRAYER BANK", subtitle: "TRÉSOR DE PRIÈRE PUISSANTE",
+    tabs: [
+      "🙏 Thèmes\nde Prière", "▶ Session\nGuidée", "✋ Actes\nProphétiques",
+      "📣 Déclarations", "👁 Esprits\nà Combattre", "📖 Bible\nIntégrale",
+      "✏ Journal", "📊 Stats", "🔥 Défis", "🕊 Éloges\n& Médit.", "📅 Prières\nMensuelles"
+    ],
+    timer: "Minuteur", start: "▶ Démarrer", pause: "⏸ Pause", reset: "↺ Réinitialiser",
+    minutes: "min", progress: "Progression", done: "✓ Accompli",
+    session: "Session Guidée de Prière", duration: "Durée totale", interval: "Fréquence (min par requête)",
+    build: "🔥 Lancer la Session", next: "Suivant →", prev: "← Précédent",
+    sessionDone: "🙏 Session terminée ! Gloire à Dieu !",
+    search: "🔍 Rechercher...", favorites: "⭐ Favoris",
+    noFav: "Aucun favori pour l'instant.", noResult: "Aucun résultat.",
+    journal: "Journal de Prière", entry: "Nouvelle entrée...", save: "💾 Sauvegarder",
+    delete: "×", today: "Aujourd'hui",
+    alarmLabel: "⏰ Rappel de prière :", prayerTimes: "Heures de prière",
+    addTime: "Ajouter", removeTime: "×",
+    voices: "🔊 Voix TTS", autoRead: "Lecture auto",
+    stats: "Statistiques", totalPrayers: "Prières totales",
+    completedPrayers: "Accomplis", journalCount: "Entrées journal",
+    favoriteCount: "Favoris", sessionCount: "Sessions",
+    challenges: "Défis", dailyChallenges: "Défis du Jour", weeklyChallenges: "Défis de la Semaine",
+    challengeDone: "✓ Défi relevé !",
+    verseOfDay: "VERSET DU JOUR",
+    copy: "Copier", copied: "✓ Copié !",
+    read: "▶ Lire",
+    praisesTitle: "ÉLOGES À DIEU",
+    praisesSub: "Adorez l'Éternel dans la splendeur de la sainteté",
+    scrollVerses: "📜 Versets sur la prière",
+    darkMode: "Mode Clair ☀️", lightMode: "Mode Sombre 🌙",
+    intercession: "INTERCESSION",
+    meditations: "🕊 Méditations",
+    monthlyPrayers: "Prières pour le nouveau mois",
+    yearlyPrayers: "Prières pour la nouvelle année",
+    newMonthTitle: "✨ NOUVEAU MOIS ✨",
+    newYearTitle: "🎆 NOUVELLE ANNÉE 🎆",
+    themeDesc: "À PROPOS DE CE THÈME",
+    importance: "IMPORTANCE BIBLIQUE",
+  }
+};
+
+// ═══════════════════════════════════════════════════════════
+// BIBLE BOOKS
+// ═══════════════════════════════════════════════════════════
+const BIBLE_BOOKS = {
+  AT: [
+    {name:"Genèse",abbr:"GEN",chapters:50},{name:"Exode",abbr:"EXO",chapters:40},
+    {name:"Lévitique",abbr:"LEV",chapters:27},{name:"Nombres",abbr:"NUM",chapters:36},
+    {name:"Deutéronome",abbr:"DEU",chapters:34},{name:"Josué",abbr:"JOS",chapters:24},
+    {name:"Juges",abbr:"JDG",chapters:21},{name:"Ruth",abbr:"RUT",chapters:4},
+    {name:"1 Samuel",abbr:"1SA",chapters:31},{name:"2 Samuel",abbr:"2SA",chapters:24},
+    {name:"1 Rois",abbr:"1KI",chapters:22},{name:"2 Rois",abbr:"2KI",chapters:25},
+    {name:"1 Chroniques",abbr:"1CH",chapters:29},{name:"2 Chroniques",abbr:"2CH",chapters:36},
+    {name:"Esdras",abbr:"EZR",chapters:10},{name:"Néhémie",abbr:"NEH",chapters:13},
+    {name:"Esther",abbr:"EST",chapters:10},{name:"Job",abbr:"JOB",chapters:42},
+    {name:"Psaumes",abbr:"PSA",chapters:150},{name:"Proverbes",abbr:"PRO",chapters:31},
+    {name:"Ecclésiaste",abbr:"ECC",chapters:12},{name:"Cantique",abbr:"SNG",chapters:8},
+    {name:"Ésaïe",abbr:"ISA",chapters:66},{name:"Jérémie",abbr:"JER",chapters:52},
+    {name:"Lamentations",abbr:"LAM",chapters:5},{name:"Ézéchiel",abbr:"EZK",chapters:48},
+    {name:"Daniel",abbr:"DAN",chapters:12},{name:"Osée",abbr:"HOS",chapters:14},
+    {name:"Joël",abbr:"JOL",chapters:3},{name:"Amos",abbr:"AMO",chapters:9},
+    {name:"Abdias",abbr:"OBA",chapters:1},{name:"Jonas",abbr:"JON",chapters:4},
+    {name:"Michée",abbr:"MIC",chapters:7},{name:"Nahoum",abbr:"NAM",chapters:3},
+    {name:"Habacuc",abbr:"HAB",chapters:3},{name:"Sophonie",abbr:"ZEP",chapters:3},
+    {name:"Aggée",abbr:"HAG",chapters:2},{name:"Zacharie",abbr:"ZEC",chapters:14},
+    {name:"Malachie",abbr:"MAL",chapters:4},
+  ],
+  NT: [
+    {name:"Matthieu",abbr:"MAT",chapters:28},{name:"Marc",abbr:"MRK",chapters:16},
+    {name:"Luc",abbr:"LUK",chapters:24},{name:"Jean",abbr:"JHN",chapters:21},
+    {name:"Actes",abbr:"ACT",chapters:28},{name:"Romains",abbr:"ROM",chapters:16},
+    {name:"1 Corinthiens",abbr:"1CO",chapters:16},{name:"2 Corinthiens",abbr:"2CO",chapters:13},
+    {name:"Galates",abbr:"GAL",chapters:6},{name:"Éphésiens",abbr:"EPH",chapters:6},
+    {name:"Philippiens",abbr:"PHP",chapters:4},{name:"Colossiens",abbr:"COL",chapters:4},
+    {name:"1 Thessaloniciens",abbr:"1TH",chapters:5},{name:"2 Thessaloniciens",abbr:"2TH",chapters:3},
+    {name:"1 Timothée",abbr:"1TI",chapters:6},{name:"2 Timothée",abbr:"2TI",chapters:4},
+    {name:"Tite",abbr:"TIT",chapters:3},{name:"Philémon",abbr:"PHM",chapters:1},
+    {name:"Hébreux",abbr:"HEB",chapters:13},{name:"Jacques",abbr:"JAS",chapters:5},
+    {name:"1 Pierre",abbr:"1PE",chapters:5},{name:"2 Pierre",abbr:"2PE",chapters:3},
+    {name:"1 Jean",abbr:"1JN",chapters:5},{name:"2 Jean",abbr:"2JN",chapters:1},
+    {name:"3 Jean",abbr:"3JN",chapters:1},{name:"Jude",abbr:"JUD",chapters:1},
+    {name:"Apocalypse",abbr:"REV",chapters:22},
+  ]
+};
+
+// ═══════════════════════════════════════════════════════════
+// THEMES DATA — enrichis avec descriptions + prières des documents
+// ═══════════════════════════════════════════════════════════
+const THEMES_DATA = [
+  {
+    id:"fondation",
+    label:"Fondation spirituelle & Vie chrétienne",
+    icon:"⛪",
+    color:"#c9a84c",
+    description:"La fondation spirituelle est le socle invisible sur lequel repose toute notre vie chrétienne. Tout comme une maison construite sur le roc résiste aux tempêtes (Matthieu 7:24-25), un croyant dont la foi est solidement ancrée dans la Parole de Dieu traversera les épreuves sans être détruit. Selon notre constitution intérieure, chaque fois que nous faisons un choix de vie, nous nous appuyons inconsciemment sur l'un de nos fondements — nos croyances, notre éducation spirituelle, notre rapport à Dieu.",
+    importance:"Hébreux 5:12 nous avertit que beaucoup de chrétiens restent des « bébés spirituels » faute d'avoir établi des fondements solides. Galates 3:13 déclare que Christ nous a rachetés de la malédiction de la loi. Une fondation saine brise tout héritage maléfique et ouvre la voie à l'accomplissement de notre destinée divine.",
+    refs:"Hébreux 7:25 · Galates 3:13 · Matthieu 7:24 · 2 Pierre 3:18",
+    sub:[
+      {
+        label:"Repentance, confession et purification",
+        description:"La repentance est la porte d'entrée de la vie chrétienne et doit être renouvelée quotidiennement. Elle implique de tourner le dos au péché et de se tourner vers Dieu avec un cœur brisé et contrit.",
+        prayers:[
+          "Père, je me repens de tous mes péchés, connus et inconnus. Lave-moi dans le sang de Jésus et purifie ma conscience.",
+          "Seigneur, crée en moi un cœur pur et renouvelle un esprit droit en moi. Je confesse mes transgressions et je reçois Ton pardon.",
+          "Je brise tout mensonge qui m'a éloigné de Ta volonté. Je choisis de marcher dans la lumière, comme Tu es dans la lumière.",
+          "Que la conviction du Saint-Esprit m'amène constamment à la repentance et à la transformation véritable.",
+          "Je confesse vos péchés et ceux de mes parents à Dieu selon Jérémie 5:23-25. Je renonce à l'orgueil, à la convoitise, à la colère, à l'avarice, à la paresse, à la gourmandise et à la luxure.",
+          "O Seigneur, crée en moi un cœur pur par Ta puissance. Renouvelle en moi un esprit juste.",
+          "Chaque contamination spirituelle dans ma vie reçoit la purification par le sang de Jésus.",
+          "Je renonce à tout mauvais dévouement placé sur ma vie, au nom de Jésus. Je romps tout mauvais édit et ordination, au nom de Jésus.",
+          "Je me libère de toute forme de servitude héritée de mes parents, au nom de Jésus.",
+          "Je me libère de toute alliance mauvaise héritée, au nom de Jésus. Je me détache de toute malédiction maléfique héritée.",
+        ]
+      },
+      {
+        label:"Identité en Christ et nouvelle naissance",
+        description:"Comprendre qui nous sommes en Christ est fondamental. Nous ne sommes plus définis par nos erreurs passées, notre environnement ou les opinions humaines — mais par ce que la Parole de Dieu dit de nous.",
+        prayers:[
+          "Je suis une nouvelle création en Christ. Les choses anciennes sont passées, toutes choses sont devenues nouvelles (2 Corinthiens 5:17).",
+          "Je suis enfant de Dieu, héritier de Dieu et cohéritier avec Christ. Mon identité est en Lui seul.",
+          "Je ne suis pas ce que le monde pense que je suis. Je ne suis pas ce que le diable a conçu pour moi. Je suis ce que la Parole de Dieu dit que je suis.",
+          "Je suis régénéré par le sang de Jésus. Je suis racheté des pouvoirs de la mort et de l'enfer. Je suis justifié par Christ.",
+          "Je suis assis avec Christ dans les lieux célestes, bien au-dessus de toute principauté et tout pouvoir.",
+          "Je suis un prêtre et un roi ordonné par Christ pour régner ici sur terre, au nom de Jésus.",
+          "Je suis une demeure du Saint-Esprit de Dieu. Je suis un sacerdoce royal, une nation sainte, une génération choisie.",
+          "Je commence à manifester expressément chaque bonne chose que Dieu a écrite sur moi. Je commence à opérer à la tête et non à la queue.",
+          "Je suis sauvé par la grâce, par la foi en Jésus-Christ. Mon nom est écrit dans le livre de vie.",
+          "Je déclare que ma vie appartient désormais à Jésus-Christ. Je confesse que l'alliance en Christ me promet des choses beaucoup plus grandes.",
+        ]
+      },
+      {
+        label:"Sanctification quotidienne et vie de sainteté",
+        description:"La sanctification est le processus continu par lequel nous sommes transformés à l'image de Christ. Ce n'est pas un effort humain mais l'œuvre du Saint-Esprit en nous, à mesure que nous lui cédons notre volonté.",
+        prayers:[
+          "Je choisis aujourd'hui de me sanctifier, de me séparer pour Toi, Seigneur. Que Ta volonté s'accomplisse dans ma vie.",
+          "Saint-Esprit, convaincs-moi de tout ce qui n'est pas conforme à Ta sainteté et donne-moi la force d'y renoncer.",
+          "O Seigneur, établis-moi comme une personne sainte pour Toi. Enflamme mon appel avec Ton feu.",
+          "O Seigneur, produis en moi le pouvoir de la maîtrise de soi et de la douceur.",
+          "Que l'onction du Saint-Esprit brise tout joug d'arriération dans ma vie.",
+          "Saint-Esprit, contrôle ma capacité à formuler mes paroles. Souffle sur moi maintenant.",
+          "Feu du Saint-Esprit, enflamme-moi à la gloire de Dieu.",
+          "Je consacre ma sexualité à Dieu. Je refuse toute impureté et je choisis de garder mon corps comme temple du Saint-Esprit.",
+          "Seigneur, guéris mon cœur de toute blessure affective et apprends-moi à aimer de manière pure et sainte.",
+          "Je renonce à toute forme de colère, de méchanceté, d'amertume, de convoitise et de haine.",
+        ]
+      },
+      {
+        label:"Baptême du Saint-Esprit et croissance spirituelle",
+        description:"Le baptême du Saint-Esprit est la promesse du Père pour tout croyant. C'est la puissance de Dieu déversée sur nous pour témoigner, servir et vivre victorieusement. Sans cette expérience, nous demeurons dans notre force humaine.",
+        prayers:[
+          "Seigneur, remplis-moi du Saint-Esprit. Je demande le baptême du feu et de puissance pour servir Ton royaume.",
+          "Que le Saint-Esprit descende sur moi avec puissance, comme à la Pentecôte, pour que je sois Ton témoin.",
+          "Père Seigneur, injecte en moi Tes vitamines spirituelles qui stimuleront mon appétit pour manger Ta Parole.",
+          "Père Seigneur, infuse dans mon sang des vitamines spirituelles qui produiront en moi la faim et la soif de prière.",
+          "Laisse-moi être rempli de la connaissance de Sa volonté, en toute sagesse et compréhension spirituelle.",
+          "Père Seigneur, que les yeux de ma compréhension soient éclairés pour connaître l'espérance de mon appel.",
+          "Père Seigneur, fortifie-moi puissamment par Son Esprit dans l'homme intérieur.",
+          "O Seigneur, augmente-moi dans la connaissance de Dieu. Que Christ habite dans mon cœur par la foi.",
+          "Que la parole du Seigneur ait cours librement et soit glorifiée en moi, au nom de Jésus.",
+          "O Seigneur, parfait ce qui manque à ma foi. Enrichis-moi de toute Parole et de toute connaissance.",
+        ]
+      },
+      {
+        label:"Briser les fondements et alliances sataniques",
+        description:"Nos fondements sont les bases invisibles sur lesquelles repose notre vie. Certaines familles ont contracté des alliances avec des puissances démoniaques qui affectent les générations suivantes. Christ est venu pour briser ces liens et établir un nouveau fondement en Son sang.",
+        prayers:[
+          "Selon Hébreux 8:6, je m'engage à renoncer à toute promesse démoniaque établie dans ma vie. Je me libère de tout engagement fait aux démons par mes parents ou moi-même.",
+          "J'ordonne à tous les esprits méchants qui exécutent les ordonnances provenant de ces alliances maléfiques de libérer ma vie, au nom de Jésus.",
+          "Je lie tous les esprits impurs attachés à mes fondements et je les jette dans le feu de Dieu.",
+          "Je brise toute alliance maléfique dans mes fondements qui produit l'échec, le rejet, l'amertume, au nom de Jésus-Christ.",
+          "Avec le sang de Jésus, j'efface toute marque démoniaque dans mes fondements. J'envoie le feu à tout objet qui me lie à une alliance satanique.",
+          "Toute fondation de sorcellerie, de débauche, d'échec, de stérilité dans mes fondements est renversée, au nom de Jésus.",
+          "Je déclare que le sang de Jésus purifie et rétablit mes fondements. Que toute malédiction inscrite dans mes fondements héréditaires se transforme en bénédiction.",
+          "Je retire mon nom de la captivité de tout autel maléfique. Je brise toute alliance avec tout autel maléfique, au nom de Jésus.",
+          "Je renverse le trône de toute autorité maléfique qui contrôle ma vie, au nom de Jésus-Christ.",
+          "Je libère chaque partie de mon corps, je me libère corps, âme et esprit de toute malédiction des alliances maléfiques.",
+        ]
+      },
+      {
+        label:"Prières sur les lignées de sang",
+        description:"La Bible enseigne que les conséquences des péchés ancestraux peuvent affecter les générations. Mais Christ nous a rachetés de toute malédiction. Ces prières visent à couper toute connexion négative transmise par la lignée sanguine.",
+        prayers:[
+          "Père Céleste, je déclare que tout ce qui se passe dans mon sang, tout ce qui est contenu dans ma lignée de sang depuis le commencement de ma génération jusqu'à présent, soit dévoilé et purifié par le Sang de Jésus.",
+          "Tout pouvoir de sang qui m'empêche de rentrer dans ma bénédiction et dans le plan de Dieu pour ma vie, soit détruit par le feu.",
+          "Toute malédiction que j'ai héritée par le sang soit détruite par le feu liquide de Dieu.",
+          "Toute parole enregistrée dans mon subconscient qui m'empêche d'évoluer, qui empêche ma promotion et mon élévation, soit effacée par le Sang de Jésus.",
+          "Tout ce qui a été fait le jour de ma conception et le jour de ma naissance, qui me limite ou me disqualifie, soit détruit par le feu.",
+          "Tout modèle de lien de sang qui contrôle mon sang et me pousse à poser des actes négatifs soit détruit, au nom de Jésus.",
+          "Que tout mélange de sang dans mon sang soit vidé par le Sang de Jésus.",
+          "Tout modèle de sang qui me pousse à faire les mêmes erreurs que mes ancêtres soit détruit, au nom de Jésus.",
+          "Par le pouvoir du Très Haut, je brise toute alliance de la sorcellerie, de la mort et des eaux avec mon sang.",
+          "Je refuse de tomber où mes parents sont tombés. Je refuse de faire les mêmes erreurs de mes ancêtres. J'ai besoin de Ton secours, Père.",
+        ]
+      },
+    ]
+  },
+  {
+    id:"combat",
+    label:"Combat spirituel & Délivrance",
+    icon:"⚔️",
+    color:"#ef5350",
+    description:"Le combat spirituel n'est pas contre des personnes mais contre les puissances des ténèbres (Éphésiens 6:12). Les situations tenaces dans notre vie ont souvent des causes spirituelles — des embargos sataniques, des forteresses mentales, des liens héréditaires. La prière violente et agressive, exercée avec foi et persévérance, brise ces résistances.",
+    importance:"Éphésiens 6:10-18 décrit l'armure complète de Dieu dont nous avons besoin pour tenir ferme. Matthieu 18:18 nous donne l'autorité de lier et délier. Luc 10:19 nous assure qu'aucune puissance de l'ennemi ne peut nous nuire lorsque nous marchons dans l'autorité de Christ.",
+    refs:"Éphésiens 6:12 · Matthieu 18:18 · Luc 10:19 · Abdias 1:3-4",
+    sub:[
+      {
+        label:"Revêtir l'armure de Dieu",
+        description:"L'armure de Dieu n'est pas symbolique — c'est une réalité spirituelle que nous devons revêtir délibérément chaque jour avant d'entrer au combat.",
+        prayers:[
+          "Je revêts la ceinture de la vérité, la cuirasse de la justice, les chaussures de l'Évangile de paix, le bouclier de la foi, le casque du salut et l'épée de l'Esprit.",
+          "Seigneur, que Ton armure me protège chaque jour contre les ruses et les stratégies de l'ennemi.",
+          "Je déclare que Christ a vaincu le monde. L'ennemi est sous mes pieds. Je marche dans la victoire aujourd'hui.",
+          "Aucune arme forgée contre moi ne prospérera. Toute langue qui se lève contre moi en jugement, je la condamne, au nom de Jésus.",
+          "Je prends le bouclier de la foi par lequel j'éteins tous les dards enflammés du malin.",
+          "Je me couvre du sang de Jésus — ma tête, mon cœur, mes mains, mes pieds et toute ma famille.",
+        ]
+      },
+      {
+        label:"Victoire sur les situations tenaces",
+        description:"Des situations tenaces demandent une mesure tenace de foi et de prière violente. L'ennemi peut s'être vanté longtemps, mais le Seigneur l'humiliera. Ces prières sont à faire agressivement, avec une foi totale en la Parole de Dieu.",
+        prayers:[
+          "Que Dieu se lève dans Sa colère et fasse la guerre pour moi. Que Ses ennemis soient dispersés.",
+          "Je refuse de laisser partir mes anges de bénédictions, au nom de Jésus.",
+          "J'annule tout effet maléfique des noms dans ma vie venant d'origines maléfiques, au nom de Jésus.",
+          "Je paralyse toute agression dirigée contre mon étoile, au nom de Jésus.",
+          "Je neutralise tous les problèmes émanant des fautes de mes parents, au nom de Jésus.",
+          "Seigneur, ouvre toutes les bonnes portes de ma vie fermées par la méchanceté, au nom de Jésus.",
+          "Que tous les plans contre mes percées, dirigés contre ma vie, soient à jamais détruits, au nom de Jésus.",
+          "Je paralyse tout antagonisme satanique depuis les entrailles, au nom de Jésus.",
+          "J'ordonne la disgrâce publique au masque de l'ennemi, au nom de Jésus.",
+          "Je piétine tout ennemi de mon avancement et de ma promotion, au nom de Jésus.",
+          "Que tous les plans destructeurs des ennemis dirigés contre moi leur explosent au visage, au nom de Jésus.",
+          "Que la cause de mon ridicule soit convertie en une source de miracle, au nom de Jésus.",
+          "Que l'homme fort têtu délégué contre moi tombe à terre et devienne impuissant, au nom de Jésus.",
+          "J'annule tous les enchantements, malédictions et sorts qui sont contre moi, au nom de Jésus.",
+          "Que le vent, le soleil et la lune se dressent contre toute présence démoniaque dans mon environnement.",
+        ]
+      },
+      {
+        label:"Délivrance des liens et malédictions",
+        description:"Les liens spirituels sont des connexions invisibles qui maintiennent les gens en captivité — liens d'alliance, malédictions héréditaires, pactes consciemment ou inconsciemment contractés. Christ est venu pour proclamer la délivrance aux captifs.",
+        prayers:[
+          "Je brise tout lien, toute chaîne, toute oppression au nom de Jésus. Je suis libre par le sang de l'Agneau.",
+          "Que tout joug soit brisé et que l'onction détruise tout fardeau dans ma vie.",
+          "Je me libère de toute forme de rébellion. Toute forme de rébellion, fuyez mon cœur, au nom de Jésus.",
+          "Tous les démons associés à une dédicace négative, partez maintenant, au nom de Jésus-Christ.",
+          "Je me détache de toute servitude héritée et de toute alliance mauvaise héritée, au nom de Jésus.",
+          "J'annule les conséquences de tout mauvais nom local attaché à ma personne, au nom de Jésus.",
+          "Tous les hommes forts fondateurs attachés à ma vie soient paralysés, au nom de Jésus.",
+          "Sang de Jésus, enlevez toute étiquette non progressiste de chaque aspect de ma vie.",
+          "Je dissous toutes les armées du mal rassemblées contre mes progrès, au nom de Jésus.",
+          "Je me casse et me détache de toute mauvaise alliance héritée, au nom de Jésus.",
+        ]
+      },
+      {
+        label:"Combat contre la méchanceté des proches",
+        description:"La Bible dit que les ennemis d'un homme peuvent être ceux de sa propre maison (Matthieu 10:36). Les attaques de l'ennemi sont souvent facilitées par des proches. Il faut prier sans haine envers les personnes, mais avec fermeté contre les forces spirituelles qui les utilisent.",
+        prayers:[
+          "Que toute mauvaise imagination contre moi se dessèche loin de la racine, au nom de Jésus.",
+          "Ceux qui me rient de mépris seront témoins de mon témoignage, au nom de Jésus.",
+          "Que tous les pouvoirs qui parrainent de mauvaises décisions contre moi soient déshonorés, au nom de Jésus.",
+          "Je commande que chaque bénédiction confisquée par les esprits de la sorcellerie soit libérée, au nom de Jésus.",
+          "Je commande que chaque bénédiction confisquée par des esprits familiers soit libérée, au nom de Jésus.",
+          "Je commande que chaque bénédiction confisquée par des agents sataniques soit libérée, au nom de Jésus.",
+          "Que tous les yeux qui surveillent le mal contre moi soient aveuglés, au nom de Jésus.",
+          "Que tout effet pervers des touches étranges soit retiré de ma vie, au nom de Jésus.",
+          "Je paralyse tous les expanseurs de problèmes, au nom de Jésus.",
+          "Je paralyse toutes les forces derrière les miracles retardés, au nom de Jésus.",
+          "Je me sépare de toute mauvaise influence et de tout courant pervers, au nom de Jésus.",
+          "Que tous les buveurs de sang et les mangeurs de chair trébuchent et tombent, au nom de Jésus.",
+        ]
+      },
+    ]
+  },
+  {
+    id:"guerison",
+    label:"Guérison, Santé & Restauration",
+    icon:"🩺",
+    color:"#52b788",
+    description:"Jésus a porté nos maladies et nos infirmités sur la croix. Par Ses meurtrissures, nous sommes guéris (Ésaïe 53:5). La maladie et la pauvreté sont deux outils du diable pour opprimer et détruire. La guérison divine n'est pas seulement physique — elle touche l'âme, l'esprit et le corps dans leur totalité.",
+    importance:"Marc 16:18 promet que ceux qui croient imposeront les mains aux malades et qu'ils seront guéris. Jérémie 17:14 déclare : « Guéris-moi, Éternel, et je serai guéri. » Le Psaume 107:20 affirme qu'Il envoie Sa parole pour guérir. Ces prières activent la promesse divine de santé totale.",
+    refs:"Ésaïe 53:5 · Jérémie 17:14 · Marc 16:18 · Psaume 107:20 · 3 Jean 1:2",
+    sub:[
+      {
+        label:"Guérison physique — Prière de délivrance",
+        description:"La prière de guérison doit être prononcée à haute voix avec foi. Nommez la maladie par son nom. Imposez vos mains sur la partie malade. Déclarez la Parole de Dieu avec autorité.",
+        prayers:[
+          "Père Céleste, au nom de Jésus, je Te remercie parce que Christ a porté pour moi mes maladies et mes faiblesses, afin que je sois réellement libre et en paix.",
+          "Je sais que la maladie vient de Satan et que Tu veux que j'en sois guéri et en bonne santé afin de Te servir et de servir les autres.",
+          "Maintenant, Père, je Te demande de me guérir selon Ta Parole qui dit que Tu es l'Éternel qui me guérit.",
+          "Je chasse de ma vie l'ennemi Satan et j'ordonne à la semence de la maladie et à ses symptômes de disparaître de ma vie au nom de Jésus-Christ.",
+          "Je déclare que par les meurtrissures de Jésus je suis guéri. Je confesse : « Guéris-moi, Éternel, et je serai guéri ; sauve-moi, et je serai sauvé, car Tu es ma gloire. » (Jérémie 17:14)",
+          "Que le sang de Jésus et le feu du Saint-Esprit nettoient chaque organe de mon corps, au nom de Jésus.",
+          "Père, laisse le feu du Saint-Esprit entrer dans ma circulation sanguine et purifier mon système, au nom de Jésus.",
+          "Je libère mes systèmes corporels de la cage de toute méchanceté domestique, au nom de Jésus.",
+          "Je commande à chaque croissance maléfique dans mon corps de se dessècher jusqu'aux racines, au nom de Jésus.",
+          "Je bois le sang de Jésus. Que toute force de mort dans mon corps soit neutralisée maintenant.",
+        ]
+      },
+      {
+        label:"Guérison intérieure et restauration émotionnelle",
+        description:"Les blessures invisibles de l'âme sont parfois plus profondes que les blessures du corps. Le rejet, l'abandon, la trahison et l'abus laissent des traces. Jésus est venu guérir les cœurs brisés (Luc 4:18).",
+        prayers:[
+          "Seigneur, guéris les blessures de mon cœur. Restaure tout ce que la douleur, le rejet et la trahison ont brisé.",
+          "Que Ta paix qui surpasse toute intelligence garde mon cœur et mon esprit en Jésus-Christ.",
+          "Je libère tout ressentiment, toute amertume et toute rancœur. Je choisis le pardon comme acte de foi.",
+          "O Seigneur, restaure mes yeux et mes oreilles spirituels, au nom de Jésus.",
+          "Je me libère de toute forme de frustration, d'angoisse, de peur et de doute, au nom de Jésus.",
+          "Seigneur, guéris mon cœur de toute blessure affective. Apprends-moi à aimer de manière pure et sainte.",
+          "Je déclare que je suis rempli de confiance, de paix, de joie et de bonheur, car tout ce que je fais réussit.",
+          "Père, que Ta puissance de résurrection vienne sur moi dans chaque domaine de ma vie blessé.",
+          "Je rejette tout esprit de découragement, de dépression et de lourdeur. Je revêts le vêtement de louange.",
+          "Toute parole enregistrée dans mon subconscient qui m'empêche de m'épanouir soit effacée par le Sang de Jésus.",
+        ]
+      },
+      {
+        label:"Briser les maladies héréditaires",
+        description:"Certaines maladies se transmettent de génération en génération — non seulement génétiquement, mais aussi spirituellement. Christ nous a rachetés de la malédiction de la loi (Galates 3:13). Nous pouvons briser ces chaînes héréditaires.",
+        prayers:[
+          "Je me libère de toute maladie héréditaire transmise à travers ma lignée de sang, au nom de Jésus.",
+          "Que le sang de Jésus déborde de mon système chaque dépôt satanique hérité, au nom de Jésus.",
+          "Je me libère de l'emprise de tout problème transféré dans ma vie depuis l'utérus, au nom de Jésus.",
+          "Je me brise et me détache de toute malédiction maléfique héritée, incluant toute infirmité héréditaire.",
+          "Que le sang de Jésus corrige tout défaut hérité de mon corps, au nom de Jésus.",
+          "Que chaque anomalie à l'intérieur de mon corps reçoive la correction divine, au nom de Jésus.",
+          "Je réclame ma complète délivrance, au nom de Jésus, de tout esprit de maladie chronique.",
+          "Je passe de l'esclavage à la liberté dans mon corps, au nom de Jésus.",
+          "Père, laisse Ta puissance créatrice opérer dans mon corps, au nom de Jésus.",
+          "Je brise l'emprise de tout pouvoir maléfique opérant dans ma santé, au nom de Jésus.",
+        ]
+      },
+    ]
+  },
+  {
+    id:"famille",
+    label:"Vie familiale, Mariage & Relations",
+    icon:"🏡",
+    color:"#ff8a65",
+    description:"La famille est la première institution créée par Dieu. Elle est aussi la première cible des attaques de l'ennemi. Le mariage reflète l'alliance entre Christ et Son Église. Satan cherche à diviser, à introduire des tiers, à semer la méfiance et à détruire l'unité familiale. La prière est notre arme la plus puissante pour protéger et restaurer nos foyers.",
+    importance:"Marc 10:6-9 déclare que Dieu a joint l'homme et la femme et que personne ne doit séparer ce qu'Il a uni. Éphésiens 5:25-33 appelle les maris à aimer leurs femmes comme Christ a aimé l'Église. La protection de la famille n'est pas optionnelle — c'est un devoir sacré.",
+    refs:"Marc 10:6-9 · Éphésiens 5:25 · Psaume 127:1 · Malachie 2:16",
+    sub:[
+      {
+        label:"Protection du mariage contre les tiers",
+        description:"Lorsque le malin vient troubler votre mariage, il est temps d'agir avec les armes spirituelles. Ces prières s'adressent aux forces spirituelles utilisées pour détruire l'union conjugale — jamais aux personnes elles-mêmes, qui sont des instruments entre les mains de l'ennemi.",
+        prayers:[
+          "Seigneur, je Te remercie pour la victoire sur toute force étrangère qui trouble mon mariage.",
+          "Que toute affection impure envers toute personne étrangère soit effacée de l'esprit de mon conjoint, au nom de Jésus.",
+          "Que toute relation extraconjugale se dégrade et meure, au nom de Jésus.",
+          "Seigneur, expose tous les complots et les plans formés contre mon mariage, au nom de Jésus.",
+          "Je retire le droit de toute force étrangère d'affliger mon mariage et ma vie, au nom de Jésus.",
+          "Je paralyse par le feu toute force magnétique utilisée pour affliger mon mariage, au nom de Jésus.",
+          "J'annule tous les sorts, les envoûtements et les enchantements dirigés contre mon mariage, au nom de Jésus.",
+          "Que toute chaîne spirituelle qui lie mon mariage soit consumée par le feu, au nom de Jésus.",
+          "Je ferme le robinet de toute influence étrangère sur mon conjoint, au nom de Jésus.",
+          "Que les anges du Dieu vivant chassent tout agent troublant actuellement mon foyer, au nom de Jésus.",
+          "Je lie toute ingérence indue dans mon mariage, au nom de Jésus.",
+          "Que tout aspect de séduction démoniaque organisé contre mon foyer soit déclaré nul et sans effet.",
+          "O Seigneur, ne laisse aucune puissance étrangère détruire le destin de mon conjoint, au nom de Jésus.",
+          "Je n'écrirai ni ne recevrai de lettre de divorce, au nom de Jésus.",
+          "Tout esprit de conflits et d'agitation dans mon foyer soit détruit, au nom de Jésus.",
+        ]
+      },
+      {
+        label:"Prières pour les célibataires",
+        description:"L'attente du mariage est un temps précieux de préparation. Dieu a un plan parfait pour chaque enfant de Dieu. Ces prières visent à aligner notre vie avec la volonté divine pour notre futur foyer.",
+        prayers:[
+          "Seigneur, prépare-moi pour mon conjoint. Purifie mon cœur et guide mes pas vers celui/celle que Tu as préparé(e).",
+          "Je prie pour que mon futur foyer soit fondé sur le roc de Ta Parole, solide face à toutes les tempêtes.",
+          "Seigneur, supprime de mon cœur toute intention de m'unir à quelqu'un hors de Ta volonté, au nom de Jésus.",
+          "Seigneur, guide mes pas vers la personne que Tu as préparée pour moi depuis la fondation du monde.",
+          "Je brise tout retard non rentable dans mon mariage. Je commande à toute force anti-mariage de partir, au nom de Jésus.",
+          "Que tout esprit qui a lié mon destin matrimonial soit paralysé, au nom de Jésus.",
+          "Je détruis toute construction maléfique érigée pour m'empêcher de rencontrer mon conjoint, au nom de Jésus.",
+          "Seigneur, fais de moi la personne que mon futur conjoint a besoin que je sois.",
+        ]
+      },
+      {
+        label:"Unité, paix et restauration du foyer",
+        description:"L'unité du foyer est une œuvre spirituelle qui se bâtit chaque jour dans la prière, le pardon et l'amour sacrificiel. Quand un foyer est divisé, c'est toujours une victoire pour l'ennemi. Ces prières visent à rétablir la paix et l'harmonie.",
+        prayers:[
+          "Seigneur, protège notre union. Que l'amour de Christ soit le fondement de notre mariage.",
+          "Que notre foyer soit un reflet du royaume de Dieu, rempli de paix, d'amour et de sainteté.",
+          "Je déclare que mon foyer est un sanctuaire de paix. Aucune strife, ni division ne peut y demeurer.",
+          "Seigneur, enseigne-nous à nous pardonner mutuellement comme Christ nous a pardonné.",
+          "Je brise tout esprit de division, de mésentente et d'incompréhension dans mon foyer, au nom de Jésus.",
+          "Que les relations familiales soient restaurées là où elles ont été brisées. Que la réconciliation triomphe.",
+          "Je prie pour que mes enfants marchent dans la destinée que Dieu leur a préparée.",
+          "Seigneur, protège mes enfants à l'école, dans la rue et dans toutes leurs activités.",
+        ]
+      },
+    ]
+  },
+  {
+    id:"finances",
+    label:"Percée financière, Travail & Abondance",
+    icon:"💼",
+    color:"#ffd700",
+    description:"Dieu s'engage à donner l'abondance à Ses enfants qui marchent dans Sa voie. La pauvreté est une malédiction — elle est un outil du diable pour opprimer et détruire. Il faut rejeter et détruire la pauvreté afin de rentrer dans l'abondance promise. Jean 10:10 : « Je suis venu afin que les brebis aient la vie et qu'elles soient dans l'abondance. »",
+    importance:"Deutéronome 8:18 rappelle que c'est Dieu qui nous donne la force d'acquérir des richesses. Proverbes 10:22 dit : « C'est la bénédiction de l'Éternel qui enrichit. » Malachie 3:10 promet que Dieu ouvrira les écluses du ciel pour ceux qui donnent la dîme. La prospérité équilibrée touche les finances, la santé et les relations.",
+    refs:"Jean 10:10 · Deutéronome 8:18 · Proverbes 10:22 · Malachie 3:10 · 3 Jean 1:2",
+    sub:[
+      {
+        label:"Briser l'esprit de pauvreté",
+        description:"Les esprits de pauvreté utilisent des stratégies précises : marques, chaînes, cages et flèches de pauvreté. Ils poussent à faire de mauvais choix financiers, à investir dans les mauvais domaines, à prendre des décisions qui mènent à la faillite. Ces prières combattent ces esprits à la racine.",
+        prayers:[
+          "Je brise tout esprit de pauvreté et de manque au nom de Jésus. Je déclare que la bénédiction de l'Éternel enrichit.",
+          "Je détruis toute marque de pauvreté posée sur ma vie depuis ma naissance, au nom de Jésus.",
+          "Je brise toutes les chaînes de pauvreté qui m'ont amené à investir dans les mauvais domaines, au nom de Jésus.",
+          "Je détruis la cage de pauvreté qui limite tous les domaines de ma destinée, au nom de Jésus.",
+          "Je brise toutes les flèches de pauvreté lancées contre ma prospérité, au nom de Jésus.",
+          "Je renonce à toutes les mauvaises décisions financières induites par les esprits de pauvreté.",
+          "Je déclare que mon nom est ôté de la liste des pauvres et inscrit sur la liste des bénis de Dieu.",
+          "Je brise tout aveuglement spirituel qui m'a empêché de voir les portes d'abondance que Dieu a ouvertes pour moi.",
+          "Je détruis toute marmite de pauvreté dans laquelle mes richesses ont été enfermées spirituellement.",
+          "Je récupère tout argent, toute bénédiction et tout bien confisqués par les esprits de pauvreté, au nom de Jésus.",
+        ]
+      },
+      {
+        label:"Prières pour l'abondance financière",
+        description:"Dieu veut nous donner une prospérité équilibrée — financière, physique et spirituelle. Ces prières s'appuient sur les promesses divines d'abondance pour ceux qui marchent dans l'intégrité et la foi.",
+        prayers:[
+          "Seigneur, ouvre les écluses du ciel sur mes finances. Je reçois l'abondance selon Ta richesse en gloire.",
+          "Père, que ce soit la bénédiction de l'Éternel qui enrichisse ma vie, sans qu'Il la fasse suivre d'aucun chagrin.",
+          "Je déclare que je sème et que je récolte le centuple, car l'Éternel me bénit (Genèse 26:12-13).",
+          "Seigneur, souviens-Toi de Ton alliance avec Abraham. Tu m'as promis de me donner la force d'acquérir des richesses.",
+          "Je déclare que je suis couvrant mes semences de prières et que les portes financières s'ouvrent à moi.",
+          "Seigneur, bénis le travail de mes mains. Que tout ce que j'entreprends prospère et porte du fruit.",
+          "Ouvre des portes de faveur dans ma carrière et mes affaires que personne ne peut fermer.",
+          "Je déclare que Dieu ne prive d'aucun bien ceux qui marchent dans l'intégrité (Psaume 84:12).",
+          "Père, que l'Esprit d'excellence sur ma vie produise une promotion surnaturelle cette année.",
+          "Seigneur, donne-moi la sagesse de gérer correctement les ressources que Tu me confies.",
+        ]
+      },
+      {
+        label:"Contre les blocages et les attaques financières",
+        description:"L'ennemi utilise des agents spirituels et humains pour bloquer les sources de prospérité. Ces prières visent à identifier et détruire tous les obstacles à notre abondance financière.",
+        prayers:[
+          "Que tout plan contre mes percées financières soit à jamais détruit, au nom de Jésus.",
+          "Aujourd'hui, le Saint-Esprit déterre mon argent, déterre mon succès, déterre mes finances, au nom de Jésus.",
+          "J'envoie le souffle de Dieu contre tout sorcier et tout esprit méchant qui confisque mon argent depuis des générations.",
+          "Je reprends mon argent, ma promotion, mes succès confisqués, au nom de Jésus.",
+          "Que toute décision maléfique prise contre mes finances dans les confréries de sorciers soit nulle et sans effet.",
+          "Je déclare que tout investissement que je fais prospère, car Dieu est avec moi.",
+          "Que toutes les barrières faisant obstacle à ma percée financière soient abattues cette année.",
+          "Je brise tout lien et tout contrat occulte lié à mes finances, au nom de Jésus.",
+          "Père, que tous ceux qui sont sans emploi reçoivent leur travail-miracle, au nom de Jésus.",
+          "Je prophétise l'abondance financière dans ma vie et dans la vie de ma famille, au nom de Jésus.",
+        ]
+      },
+    ]
+  },
+  {
+    id:"ministere",
+    label:"Ministère, Église & Service de Dieu",
+    icon:"🙌",
+    color:"#ba68c8",
+    description:"L'Église est le corps de Christ sur la terre. Chaque membre a un rôle précis à jouer dans l'édification du corps. Les pasteurs et leaders spirituels portent une responsabilité particulière et ont besoin d'une couverture de prière constante. Quand le berger est attaqué, le troupeau se disperse (Zacharie 13:7). Intercéder pour nos leaders c'est protéger toute l'Église.",
+    importance:"2 Thessaloniciens 3:1 nous appelle à prier pour que la Parole du Seigneur ait cours librement. Éphésiens 4:11-12 établit les ministères pour l'équipement des saints. Les pasteurs ont plus besoin de prières que les membres car l'ennemi cible en priorité la tête pour disperser le corps.",
+    refs:"Zacharie 13:7 · 2 Thessaloniciens 3:1 · Éphésiens 4:11 · 1 Timothée 2:1-2",
+    sub:[
+      {
+        label:"Prières pour les pasteurs et leaders spirituels",
+        description:"Prier pour nos pasteurs, c'est protéger l'Église entière. Ces prières couvrent leur intégrité, leur santé, leur famille, leur vision et leur onction.",
+        prayers:[
+          "Père, je Te remercie pour Ta main puissante au travail dans la vie de nos pasteurs, au nom de Jésus.",
+          "Père, habilite nos pasteurs à amener continuellement les âmes au repentir devant le Seigneur.",
+          "Je déclare que nos pasteurs ne seront pas une flèche ratée entre les mains du Créateur, au nom de Jésus.",
+          "Tout pouvoir fondateur travaillant contre notre pasteur et son appel soit détruit, au nom de Jésus.",
+          "Chaque joug travaillant contre la croissance spirituelle de nos pasteurs, casse, au nom de Jésus.",
+          "Par la puissance de Dieu, l'ennemi ne fera pas de nos pasteurs un mauvais exemple, au nom de Jésus.",
+          "Toute habitude destructrice conçue pour gâcher l'appel de nos pasteurs doit mourir, au nom de Jésus.",
+          "Chaque flèche anti-ministère tirée en direction de nos pasteurs se retourne, au nom de Jésus.",
+          "Feu du Saint-Esprit, détruis toutes les œuvres des ténèbres dans la vie de nos pasteurs.",
+          "O Dieu de toute grâce, donne à nos pasteurs une grâce nouvelle pour cette grande œuvre, au nom de Jésus.",
+          "Père, je couvre tous nos pasteurs et ministres du sang de Jésus.",
+          "Que les eaux de la vie coulent dans chaque zone morte de la vie spirituelle de nos pasteurs.",
+          "Tout serpent fondateur programmé dans la vie et le ministère de nos pasteurs soit détruit.",
+          "Pouvoir de bien finir, venez sur nos pasteurs, au nom de Jésus.",
+          "Chaque cataracte spirituelle, éloignée de la vision de nos pasteurs, au nom de Jésus.",
+        ]
+      },
+      {
+        label:"Croissance et réveil de l'Église",
+        description:"Ces prières visent à voir l'Église de Christ se multiplier, grandir en profondeur spirituelle et devenir une puissance de transformation dans son milieu.",
+        prayers:[
+          "Père, au nom de Jésus, donne à chaque membre de cette Église une sagesse surnaturelle, entraînant des percées silencieuses.",
+          "Père, endosse chaque membre de cette Église avec l'Esprit d'excellence pour leur redressement surnaturel.",
+          "Père, remplis chaque membre de cette Église de l'Esprit de la crainte du Seigneur, manifestant Ta faveur sur chacun.",
+          "Père, que toutes les barrières faisant obstacle au retour de tout membre éloigné soient abattues.",
+          "Père, rends visite à chaque membre découragé de cette Église, les rétablissant dans la foi.",
+          "Père, guéris instantanément tous ceux qui sont malades dans cette Église, rétablissant-les en parfaite santé.",
+          "Père, délivre chaque membre de cette Église de toutes les oppressions du diable.",
+          "Que tous ceux qui sont sans emploi dans cette Église reçoivent leur travail-miracle, au nom de Jésus.",
+          "Que l'unité règne dans notre Église. Détruis toute division, tout sectarisme et toute jalousie.",
+          "Que l'amour fraternel soit le signe que nous sommes Tes disciples.",
+        ]
+      },
+    ]
+  },
+  {
+    id:"nations",
+    label:"Nations, Société & Intercession",
+    icon:"🌍",
+    color:"#4fc3f7",
+    description:"L'intercession pour les nations est une responsabilité prophétique. Dieu cherche des hommes et des femmes qui se tiendront dans la brèche pour leur pays (Ézéchiel 22:30). Nous sommes appelés à prier pour la paix, les gouvernants, les pauvres et les persécutés, et pour un réveil qui transforme les sociétés.",
+    importance:"1 Timothée 2:1-2 nous appelle à intercéder pour tous les hommes et pour tous les gouvernants. Jérémie 29:7 nous invite à chercher la paix de la ville où nous vivons. Le réveil spirituel est la seule réponse durable aux crises sociales, politiques et morales de notre époque.",
+    refs:"Ézéchiel 22:30 · 1 Timothée 2:1-2 · Jérémie 29:7 · 2 Chroniques 7:14",
+    sub:[
+      {
+        label:"Prières pour la paix et les autorités",
+        description:"Intercéder pour nos gouvernants ne signifie pas approuver leurs politiques, mais désirer que Dieu les guide dans la justice et la sagesse pour le bien de tous.",
+        prayers:[
+          "Seigneur, donne la paix à ma nation. Arrête les conflits, apporte la stabilité et la justice.",
+          "Que les dirigeants marchent dans Ta sagesse et gouvernent selon Ta volonté.",
+          "Je prie pour nos autorités civiles. Qu'elles reçoivent la sagesse divine pour gouverner avec intégrité.",
+          "Seigneur, que la corruption soit exposée et détruite. Que la justice et la droiture règnent dans notre pays.",
+          "Que Tes anges veillent sur notre nation et la protègent des conspirations et des attaques.",
+          "Que les lois et les politiques de notre nation reflètent les valeurs du Royaume de Dieu.",
+        ]
+      },
+      {
+        label:"Prières pour le réveil et les nations",
+        description:"Le réveil spirituel est l'intervention souveraine de Dieu qui transforme des villes, des régions et des nations entières. Ces prières s'inscrivent dans l'héritage des grands réveils de l'histoire.",
+        prayers:[
+          "Seigneur, envoie un réveil sur notre nation. Que Ton Esprit se répande sur toute chair.",
+          "Que les portes du salut s'ouvrent dans notre pays et que des milliers viennent à Toi.",
+          "Seigneur, suscite des hommes et des femmes de Dieu qui se tiendront dans la brèche pour notre nation.",
+          "Que les prières de l'Église montent comme un encens perpétuel devant le trône de Dieu.",
+          "Seigneur, touche les médias, les arts et la culture. Que Ton influence pénètre tous les secteurs de la société.",
+          "Je prie pour les pauvres et les opprimés. Que la justice de Dieu se manifeste en leur faveur.",
+          "Seigneur, protège et fortifie nos frères et sœurs persécutés à cause de leur foi dans le monde entier.",
+          "Que le réveil spirituel mondial promis se réalise en cette génération.",
+        ]
+      },
+    ]
+  },
+];
+
+// ═══════════════════════════════════════════════════════════
+// PROPHETIC DECLARATIONS — enrichies
+// ═══════════════════════════════════════════════════════════
+const PROPHETIC = [
+  { cat:"Identité", text:"Je suis plus que vainqueur par Celui qui m'a aimé.", ref:"Romains 8:37" },
+  { cat:"Identité", text:"Je ne suis pas ce que le diable a conçu pour moi. Je suis ce que la Parole de Dieu dit que je suis.", ref:"Jean 1:12" },
+  { cat:"Identité", text:"Je suis assis avec Christ dans les lieux célestes, bien au-dessus de toute principauté et tout pouvoir.", ref:"Éphésiens 2:6" },
+  { cat:"Foi", text:"Rien n'est impossible à celui qui croit.", ref:"Marc 9:23" },
+  { cat:"Foi", text:"Je puis tout par Christ qui me fortifie.", ref:"Philippiens 4:13" },
+  { cat:"Foi", text:"La foi sans les œuvres est morte. Je déclare et j'agis en accord avec la Parole de Dieu.", ref:"Jacques 2:26" },
+  { cat:"Protection", text:"Nul mal ne m'atteindra, nul fléau n'approchera ma demeure.", ref:"Psaume 91:10" },
+  { cat:"Protection", text:"Aucune arme forgée contre moi ne prospérera, et toute langue qui s'élève contre moi en jugement, je la condamne.", ref:"Ésaïe 54:17" },
+  { cat:"Protection", text:"Je marche sous l'ombre du Tout-Puissant. L'Éternel est mon refuge et ma forteresse.", ref:"Psaume 91:1-2" },
+  { cat:"Prospérité", text:"Je déclare que Dieu pourvoit à tous mes besoins selon Sa richesse en gloire.", ref:"Philippiens 4:19" },
+  { cat:"Prospérité", text:"La bénédiction de l'Éternel enrichit ma vie. Je sème et je récolte le centuple.", ref:"Proverbes 10:22" },
+  { cat:"Prospérité", text:"Je déclare que mon labeur n'est pas vain. Tout ce que j'entreprends prospère.", ref:"Psaume 1:3" },
+  { cat:"Guérison", text:"Par ses meurtrissures, je suis guéri. La maladie ne peut demeurer dans mon corps.", ref:"Ésaïe 53:5" },
+  { cat:"Guérison", text:"Jésus a envoyé Sa Parole et m'a guéri. Je suis libre de toute infirmité.", ref:"Psaume 107:20" },
+  { cat:"Victoire", text:"Je déclare que l'ennemi ne prévaudra pas sur moi. Le Seigneur est avec moi.", ref:"Jérémie 1:19" },
+  { cat:"Victoire", text:"Je suis condamné à la victoire. Je suis condamné à gagner, car Christ a déjà vaincu.", ref:"1 Corinthiens 15:57" },
+  { cat:"Destinée", text:"Je prophétise le succès et la réussite dans toutes mes entreprises. Ma destinée est dans les mains de Dieu.", ref:"Jérémie 29:11" },
+  { cat:"Destinée", text:"Je commence à manifester chaque bonne chose que Dieu a écrite sur moi. J'avance de gloire en gloire.", ref:"2 Corinthiens 3:18" },
+  { cat:"Autorité", text:"Voici, je vous donne l'autorité de marcher sur les serpents et les scorpions et sur toute la puissance de l'ennemi.", ref:"Luc 10:19" },
+  { cat:"Autorité", text:"Tout ce que je lie sur la terre est lié dans le ciel. Tout ce que je délie sur la terre est délié dans le ciel.", ref:"Matthieu 18:18" },
+];
+
+// ═══════════════════════════════════════════════════════════
+// PROPHETIC ACTS — enrichis
+// ═══════════════════════════════════════════════════════════
+const ACTS = [
+  {
+    icon:"🛢", title:"L'onction d'huile", cat:"Guérison", combat:"Maladie", ref:"Jacques 5:14",
+    instruction:"Prenez de l'huile d'olive et consacrez-la à Dieu en prière. Oignez votre front ou les parties malades en déclarant la guérison au nom de Jésus. Accompagnez cet acte de la prière de Jérémie 17:14 : « Guéris-moi, Éternel, et je serai guéri. » Répétez 7 jours si nécessaire."
+  },
+  {
+    icon:"🩸", title:"Pleurer par le sang de Jésus", cat:"Protection", combat:"Attaque spirituelle", ref:"Exode 12:23",
+    instruction:"Déclarez verbalement que vous couvrez votre maison, votre famille et vous-même du sang de Jésus. Tracez symboliquement une croix sur votre porte. Déclarez : « Le sang de Jésus parle en ma faveur. Le destructeur ne peut entrer ici. »"
+  },
+  {
+    icon:"🎺", title:"Le cri de victoire", cat:"Percée", combat:"Blocages", ref:"Josué 6:20",
+    instruction:"Après 7 jours de prière intensive sur une situation, criez d'un grand cri de foi en déclarant que les murs tombent. Déclarez 7 fois : « Les murs tombent au nom de Jésus ! Ma percée est maintenant ! » Cet acte symbolise que vous croyez avant de voir."
+  },
+  {
+    icon:"💧", title:"Le jeûne et la prière", cat:"Délivrance", combat:"Situations tenaces", ref:"Ésaïe 58:6",
+    instruction:"Pour les situations tenaces, observez un jeûne de 1 à 3 jours (avec rupture quotidienne à 18h ou 21h). Pendant le jeûne, priez à intervalles réguliers. Un jeûne de 7 jours est recommandé pour les situations extrêmes. Dressez la liste des prières à faire chaque jour."
+  },
+  {
+    icon:"✋", title:"L'imposition des mains", cat:"Guérison & Bénédiction", combat:"Maladie & Blocages", ref:"Marc 16:18",
+    instruction:"Imposez vos mains sur la personne ou la partie malade. Priez avec autorité en déclarant la Parole de Dieu. Dites : « Au nom de Jésus-Christ de Nazareth, je déclare la guérison complète. Tout esprit de maladie, pars maintenant ! » Continuez jusqu'à voir un changement."
+  },
+  {
+    icon:"📖", title:"Méditation et confession de la Parole", cat:"Foi", combat:"Doute & Incrédulité", ref:"Josué 1:8",
+    instruction:"Choisissez 3 à 5 versets bibliques correspondant à votre besoin. Méditez-les profondément, laissez-les pénétrer votre esprit. Confessez-les à haute voix matin et soir pendant 21 jours. La Parole confessée crée la réalité dans le monde spirituel."
+  },
+];
+
+// ═══════════════════════════════════════════════════════════
+// SPIRITS — enrichis
+// ═══════════════════════════════════════════════════════════
+const SPIRITS = [
+  {
+    cat:"Tromperie", name:"Esprit de mensonge", ref:"1 Rois 22:22",
+    description:"Répand la fausseté, la manipulation et la tromperie dans les relations, la famille et la société. Génère des perceptions déformées et des décisions basées sur des illusions.",
+    prayer:"Je lie tout esprit de mensonge et de tromperie, au nom de Jésus. Je déclare que la vérité de Christ règne dans ma vie. Toute langue menteuse contre moi est condamnée."
+  },
+  {
+    cat:"Peur", name:"Esprit de crainte", ref:"2 Timothée 1:7",
+    description:"Paralyse par la peur, l'anxiété et l'angoisse. Empêche d'avancer dans la foi et de saisir les opportunités divines. Source de nombreuses maladies psychosomatiques.",
+    prayer:"Je déclare que je n'ai pas reçu l'esprit de crainte, mais de puissance, d'amour et de maîtrise de soi. Je lie tout esprit d'angoisse et d'anxiété, au nom de Jésus."
+  },
+  {
+    cat:"Orgueil", name:"Esprit d'orgueil", ref:"Proverbes 16:18",
+    description:"Exalte l'ego contre Dieu et les autres. L'orgueil précède la chute. Il ferme les portes de la faveur divine et génère des conflits dans les relations et les ministères.",
+    prayer:"Je brise tout esprit d'orgueil et d'arrogance. Je m'humilie devant Toi, Seigneur. Que l'humilité du Christ règne en moi."
+  },
+  {
+    cat:"Pauvreté", name:"Esprit de pauvreté", ref:"Deutéronome 28:15",
+    description:"Dirige la victime vers de mauvais choix financiers, l'échec dans les affaires et l'investissement dans les mauvais domaines. Utilise des marques, des chaînes, des cages et des flèches spirituelles.",
+    prayer:"Je lie tout esprit de pauvreté et de manque. Je brise toutes les chaînes et marques de pauvreté sur ma vie. L'abondance de Dieu coule maintenant vers moi."
+  },
+  {
+    cat:"Division", name:"Esprit de division", ref:"1 Corinthiens 1:10",
+    description:"Sème la discorde, la jalousie et la méfiance dans les familles, les églises et les organisations. Détruit l'unité qui est la source de la puissance divine.",
+    prayer:"Je brise tout esprit de division et de discorde dans ma famille et dans mon église. Que l'amour du Christ nous rassemble en une seule unité."
+  },
+  {
+    cat:"Mort", name:"Esprit de mort prématurée", ref:"Psaume 91:16",
+    description:"Opère à travers les maladies inexpliquées, les accidents répétés, les cauchemars liés à la mort. Cherche à raccourcir la vie et à détruire le destin.",
+    prayer:"Je lie tout esprit de mort prématurée sur ma vie et ma famille. Je déclare que je vivrai et non que je mourrai, et que je proclamerai les œuvres de l'Éternel."
+  },
+  {
+    cat:"Stagnation", name:"Esprit d'arriération et de stagnation", ref:"Zacharie 4:7",
+    description:"Maintient dans le même état malgré les efforts. Produit des percées avortées, des promotions qui ne viennent pas, une destinée bloquée. Agit souvent depuis les fondements familiaux.",
+    prayer:"Je brise tout esprit d'arriération et de stagnation. Je commande à toute grande montagne devant moi de devenir une plaine, au nom de Jésus. Zacharie 4:7."
+  },
+  {
+    cat:"Sorcellerie", name:"Esprit de sorcellerie et d'occultisme", ref:"Michée 5:12",
+    description:"Opère à travers les pratiques occultes, les charmes, les envoûtements et les malédictions formulées. Cherche à lier la destinée et à substituer la puissance de Dieu par des puissances démoniaques.",
+    prayer:"Je brise tout esprit de sorcellerie et d'occultisme opérant contre ma vie. Je déclare que tout sortilège, tout envoûtement et toute malédiction sont annulés par le sang de Jésus."
+  },
+];
+
+// ═══════════════════════════════════════════════════════════
+// PRAISES — enrichies
+// ═══════════════════════════════════════════════════════════
+const PRAISES = [
+  { icon:"✨", cat:"Majesté", text:"Seigneur, Tu es la lumière du monde. Ta gloire remplit la terre entière et Ton nom est grand parmi les nations.", ref:"Psaume 72:19" },
+  { icon:"🔥", cat:"Puissance", text:"Tu es le Dieu tout-puissant, rien n'est impossible à Ta main. Tu règnes sur les puissances du ciel et de la terre.", ref:"Jérémie 32:27" },
+  { icon:"🕊", cat:"Amour", text:"Ton amour est plus grand que les cieux, Ta fidélité touche les nues. Il n'y a rien de comparable à Ton amour pour nous.", ref:"Psaume 108:4" },
+  { icon:"👑", cat:"Royauté", text:"Tu es le Roi des rois, le Seigneur des seigneurs. À Toi soit la gloire, l'honneur et la puissance aux siècles des siècles.", ref:"Apocalypse 19:16" },
+  { icon:"🌅", cat:"Grâce", text:"Tes grâces se renouvellent chaque matin. Grande est Ta fidélité, Seigneur. Tu n'abandonnes pas l'œuvre de Tes mains.", ref:"Lamentations 3:23" },
+  { icon:"🏆", cat:"Victoire", text:"Gloire à Dieu qui nous donne la victoire par notre Seigneur Jésus-Christ ! Il a vaincu la mort, le péché et l'enfer.", ref:"1 Corinthiens 15:57" },
+  { icon:"⚡", cat:"Puissance", text:"L'Éternel, Dieu fort et puissant ! L'Éternel, puissant dans les combats ! Les portes de l'enfer ne peuvent prévaloir contre Toi.", ref:"Psaume 24:8" },
+  { icon:"💎", cat:"Sagesse", text:"Ô profondeur de la richesse, de la sagesse et de la connaissance de Dieu ! Comme Ses voies sont insondables.", ref:"Romains 11:33" },
+];
+
+// ═══════════════════════════════════════════════════════════
+// PRAYER VERSES
+// ═══════════════════════════════════════════════════════════
+const PRAYER_VERSES = [
+  { text:"L'Éternel est ma lumière et mon salut, de qui aurais-je crainte ?", ref:"Psaume 27:1" },
+  { text:"Ne vous inquiétez de rien, mais présentez vos requêtes à Dieu par la prière.", ref:"Philippiens 4:6" },
+  { text:"Je puis tout par Christ qui me fortifie.", ref:"Philippiens 4:13" },
+  { text:"La prière du juste a une grande efficace.", ref:"Jacques 5:16" },
+  { text:"Cherchez premièrement le royaume de Dieu et sa justice.", ref:"Matthieu 6:33" },
+  { text:"Priez sans cesse. En toutes choses rendez grâces.", ref:"1 Thessaloniciens 5:17" },
+  { text:"Si vous demandez quelque chose en mon nom, je le ferai.", ref:"Jean 14:14" },
+];
+
+// ═══════════════════════════════════════════════════════════
+// CHALLENGES
+// ═══════════════════════════════════════════════════════════
+const CHALLENGES_DATA = {
+  daily: [
+    { type:"check", label:"Accomplir 3 prières aujourd'hui", target:3, unit:"prières", progress:0, completed:false },
+    { type:"timer", label:"Prier 15 minutes sans interruption", target:15, unit:"minutes", progress:0, completed:false },
+    { type:"journal", label:"Écrire dans le journal de prière", target:1, unit:"entrée", progress:0, completed:false },
+    { type:"check", label:"Faire une déclaration prophétique", target:1, unit:"déclaration", progress:0, completed:false },
+  ],
+  weekly: [
+    { type:"session", label:"Compléter 3 sessions guidées", target:3, unit:"sessions", progress:0, completed:false },
+    { type:"check", label:"Accomplir 20 prières cette semaine", target:20, unit:"prières", progress:0, completed:false },
+    { type:"check", label:"Lire 5 chapitres de la Bible", target:5, unit:"chapitres", progress:0, completed:false },
+  ]
+};
+
+// ═══════════════════════════════════════════════════════════
+// MEDITATIONS — enrichies
+// ═══════════════════════════════════════════════════════════
+const MEDITATIONS = [
+  {
+    title:"La Paix de Dieu",
+    ref:"Philippiens 4:7",
+    text:"La paix de Dieu, qui surpasse toute intelligence, gardera vos cœurs et vos pensées en Jésus-Christ.",
+    reflection:"Cette paix n'est pas l'absence de problèmes, mais la présence de Dieu au milieu des épreuves. Elle est une sentinelle surnaturelle qui protège notre intérieur des assauts extérieurs. Laissez-la vous envelopper comme un bouclier invulnérable."
+  },
+  {
+    title:"La Puissance de la Résurrection",
+    ref:"Éphésiens 1:19-20",
+    text:"Quelle est envers nous qui croyons la grandeur de sa puissance — la même puissance qui a ressuscité Christ des morts.",
+    reflection:"Cette même puissance extraordinaire qui a vaincu la mort habite en vous. Elle peut transformer les situations les plus mortes de votre vie. Ne limitez pas Dieu par l'incrédulité. Cette puissance est disponible maintenant."
+  },
+  {
+    title:"Les Banques de Prière",
+    ref:"Actes 10:4",
+    text:"Tes prières et tes aumônes sont montées en mémorial devant Dieu.",
+    reflection:"Comme un système bancaire, nos prières constituent des dépôts dans le royaume céleste. Corneille priait continuellement et ses prières s'accumulaient comme un mémorial devant Dieu. Plus nous déposons dans la banque céleste, plus nous pouvons retirer lors des crises. La prière est la monnaie du Royaume."
+  },
+  {
+    title:"Identité Royale",
+    ref:"1 Pierre 2:9",
+    text:"Vous êtes une race élue, un sacerdoce royal, une nation sainte, un peuple acquis, afin que vous annonciez les louanges de celui qui vous a appelés.",
+    reflection:"Vous n'êtes pas un citoyen ordinaire du royaume. Vous êtes prêtre ET roi. Comme prêtre, vous avez accès à Dieu. Comme roi, vous avez autorité sur les puissances adverses. Marchez dans cette double dignité chaque jour."
+  },
+  {
+    title:"Le Fondement Inébranlable",
+    ref:"Matthieu 7:24-25",
+    text:"Tout homme qui entend mes paroles et les met en pratique est semblable à un homme prudent qui a bâti sa maison sur le roc.",
+    reflection:"La tempête révèle la qualité du fondement. Un croyant dont la vie est bâtie sur la Parole de Dieu, l'obéissance et la prière résistera à toutes les tempêtes de la vie. Prenez le temps de consolider vos fondations spirituelles aujourd'hui."
+  },
+];
+
+// ═══════════════════════════════════════════════════════════
+// MONTHLY / YEARLY PRAYERS — enrichies
+// ═══════════════════════════════════════════════════════════
+const MONTH_YEAR_PRAYERS = {
+  month: [
+    { title:"Prière de consécration du mois", text:"Seigneur, je consacre ce nouveau mois entre Tes mains. Dirige mes pas, sanctifie mes projets, et que Ta gloire se manifeste dans chaque domaine de ma vie. Que ce mois soit un mois de percée surnaturelle. Au nom de Jésus." },
+    { title:"Prière pour la protection du mois", text:"Je place ce mois sous le sang de Jésus. Aucune flèche de l'ennemi ne m'atteindra. Je déclare que la grâce de Dieu m'accompagne chaque jour de ce mois. Les anges de l'Éternel campent autour de moi." },
+    { title:"Prière pour la percée du mois", text:"Père, que ce mois soit un mois de percée pour moi. Je déclare que les portes fermées s'ouvrent, les obstacles sont enlevés, et j'avance dans Ta volonté. Que tout ce que l'ennemi a retenu soit libéré maintenant." },
+    { title:"Prière pour les finances du mois", text:"Seigneur, je déclare ce mois comme un mois de provision divine. Que Tes ressources coulent vers moi. Que chaque investissement que je fais soit béni. Que les portes de l'abondance s'ouvrent à moi selon Ta promesse." },
+    { title:"Prière pour la famille ce mois", text:"Seigneur, couvre ma famille ce mois. Protège mes enfants, mon conjoint, mes parents. Que la paix de Dieu règne dans mon foyer. Que ce mois renforce nos liens et notre amour mutuel." },
+    { title:"Prière de gratitude pour le mois", text:"Merci Seigneur pour les bienfaits du mois passé. Je reçois avec reconnaissance ce nouveau mois comme un don de Ta grâce. Aide-moi à en faire un mois de louange et de témoignage de Ta bonté." },
+  ],
+  year: [
+    { title:"Prière pour la nouvelle année", text:"Père céleste, alors que s'ouvre cette nouvelle année, je Te remets mon avenir. Guide-moi selon Ta volonté, ouvre des portes que personne ne peut fermer, et que cette année soit marquée par Ta présence et Ta bénédiction. Au nom de Jésus." },
+    { title:"Déclaration prophétique pour l'année", text:"Cette année est mon année de récompense divine. Je vois la main de Dieu agir en ma faveur. Toute chaîne de pauvreté, d'échec et de stagnation est brisée. Je rentre dans mon héritage en Christ. Je prophétise le succès et la réussite dans toutes mes entreprises." },
+    { title:"Prière pour les résolutions de l'année", text:"Seigneur, je consacre mes projets pour cette année. Que tout ce que j'entreprends soit béni. Donne-moi la sagesse, la force et la persévérance pour accomplir ce que Tu as mis dans mon cœur. Que je finisse ce que je commence." },
+    { title:"Prière pour la protection de l'année", text:"Je déclare que cette année, je suis couvert par le sang de Jésus. Aucun mal ne m'approchera, aucun fléau n'atteindra ma demeure. Je marche sous l'ombre du Tout-Puissant." },
+    { title:"Prière pour les finances de l'année", text:"Seigneur, que cette année soit mon année de percée financière. Je déclare que les portes que Tu as ouvertes pour moi cette année ne peuvent être fermées. Je prospérerai dans tout ce que j'entreprends selon Psaume 1:3." },
+  ]
+};
+
+// ═══════════════════════════════════════════════════════════
+// UTILITY
+// ═══════════════════════════════════════════════════════════
+const fmtSecs = (s) => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+
+// ═══════════════════════════════════════════════════════════
+// UI COMPONENTS — redesigned
+// ═══════════════════════════════════════════════════════════
+
+const Card = memo(({ children, style={}, onClick, glow=false }) => (
+  <div onClick={onClick}
+    style={{
+      background:"rgba(18,12,4,0.80)",
+      border:`1px solid ${glow ? GOLD : GOLD_DIM}`,
+      borderRadius:14,
+      padding:"14px 16px",
+      marginBottom:10,
+      cursor:onClick?"pointer":"default",
+      backdropFilter:"blur(8px)",
+      boxShadow: glow ? `0 0 20px ${GOLD_GLOW}, inset 0 0 30px rgba(201,168,76,0.03)` : `0 2px 12px rgba(0,0,0,0.35)`,
+      transition:"all 0.25s ease",
+      ...style
+    }}>
+    {children}
+  </div>
+));
+
+const Label = memo(({ children, style={}, accent=false }) => (
+  <p style={{
+    color: GOLD,
+    fontSize: 9,
+    letterSpacing: 3,
+    margin: accent ? "0 0 12px" : "0 0 8px",
+    textTransform:"uppercase",
+    fontFamily:"'Cinzel',Georgia,serif",
+    ...(accent && { borderBottom:`1px solid ${GOLD_DIM}`, paddingBottom:6 }),
+    ...style
+  }}>{children}</p>
+));
+
+const Btn = memo(({ children, onClick, active, small, disabled, style={} }) => (
+  <button onClick={onClick} disabled={disabled}
+    style={{
+      background: active ? `linear-gradient(135deg, ${GOLD}, #a87a2a)` : "transparent",
+      color: active ? "#1a0f00" : GOLD,
+      border: `1px solid ${active ? GOLD : GOLD_DIM}`,
+      borderRadius: 20,
+      padding: small ? "4px 11px" : "7px 16px",
+      fontSize: small ? 10 : 11,
+      cursor: "pointer",
+      fontFamily: "Georgia,serif",
+      letterSpacing: 0.8,
+      opacity: disabled ? 0.4 : 1,
+      transition: "all 0.2s ease",
+      fontWeight: active ? "bold" : "normal",
+      ...style
+    }}>
+    {children}
+  </button>
+));
+
+const ProgressBar = memo(({ value, max, style={}, color=GOLD }) => (
+  <div style={{ background:"rgba(201,168,76,0.1)", borderRadius:6, height:5, overflow:"hidden", ...style }}>
+    <div style={{
+      background: `linear-gradient(90deg, ${color}88, ${color})`,
+      height:"100%",
+      width: `${max>0 ? Math.min(100, Math.round((value/max)*100)) : 0}%`,
+      transition:"width 0.5s cubic-bezier(0.4,0,0.2,1)",
+      borderRadius:6
+    }} />
+  </div>
+));
+
+// InfoBox — for theme descriptions
+const InfoBox = memo(({ title, children, color=GOLD, icon="ℹ️" }) => (
+  <div style={{
+    background:`rgba(${color==="crimson"?"100,20,10":"30,20,5"},0.4)`,
+    border:`1px solid ${GOLD_DIM}`,
+    borderLeft:`3px solid ${GOLD}`,
+    borderRadius:10,
+    padding:"10px 12px",
+    marginBottom:10,
+  }}>
+    <p style={{ color:GOLD, fontSize:8, letterSpacing:2, margin:"0 0 6px", fontFamily:"'Cinzel',Georgia,serif" }}>{icon} {title}</p>
+    <p style={{ color:"#c8b890", fontSize:12, lineHeight:1.7, margin:0, fontFamily:"'EB Garamond',Georgia,serif" }}>{children}</p>
+  </div>
+));
+
+const PrayerCard = memo(({ text, index, checked, onCheck, onSpeak, onFav, onCopy, isFav, isCopied, ttsActive, textColor, themeColor="#c9a84c" }) => {
+  const [pressed, setPressed] = useState(false);
+  const handlePress = () => { setPressed(true); setTimeout(() => setPressed(false), 200); };
+  return (
+    <div style={{
+      position:"relative",
+      background: checked
+        ? `linear-gradient(135deg, rgba(201,168,76,0.08), rgba(201,168,76,0.03))`
+        : `linear-gradient(135deg, rgba(25,16,4,0.9), rgba(18,10,2,0.95))`,
+      border:`1px solid ${checked ? GOLD : GOLD_DIM}`,
+      borderLeft:`3px solid ${checked ? GOLD : themeColor}`,
+      borderRadius:12,
+      padding:"14px 14px 12px",
+      marginBottom:8,
+      transform:pressed?"scale(0.99)":"scale(1)",
+      transition:"all 0.2s ease",
+      opacity:checked?0.7:1,
+      boxShadow:checked?"none":`0 2px 8px rgba(0,0,0,0.4)`,
+    }} onTouchStart={handlePress}>
+      <div style={{ position:"absolute", top:10, right:12, background:checked?GOLD_DIM:"rgba(201,168,76,0.06)", border:`1px solid ${GOLD_DIM}`, borderRadius:10, padding:"1px 7px", fontSize:9, color:checked?GOLD:"#6b5c3e", fontFamily:"Georgia,serif", letterSpacing:1 }}>
+        {checked?"✓ ACCOMPLI":`N°${index+1}`}
+      </div>
+      <p style={{ color:checked?"#6b5c3e":textColor, fontSize:14, lineHeight:1.75, margin:"0 0 12px", paddingRight:60, fontStyle:"italic", textDecoration:checked?"line-through":"none", fontFamily:"Georgia,serif" }}>
+        {text}
+      </p>
+      <div style={{ display:"flex", gap:4, alignItems:"center", borderTop:`1px solid ${GOLD_FAINT}`, paddingTop:10 }}>
+        <button onClick={onCheck} style={{ background:checked?GOLD:"transparent", border:`1.5px solid ${checked?GOLD:GOLD_DIM}`, borderRadius:8, width:32, height:32, cursor:"pointer", color:checked?"#1a0f00":GOLD, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.2s ease", flexShrink:0 }}>
+          {checked?"✓":"○"}
+        </button>
+        <div style={{ flex:1 }} />
+        <button onClick={onSpeak} style={{ background:ttsActive?GOLD_GLOW:"transparent", border:`1px solid ${ttsActive?GOLD:GOLD_DIM}`, borderRadius:8, padding:"6px 10px", cursor:"pointer", color:GOLD, fontSize:11, fontFamily:"Georgia,serif", display:"flex", alignItems:"center", gap:4 }}>
+          {ttsActive?"⏸":"▶"} <span style={{ fontSize:9 }}>LIRE</span>
+        </button>
+        <button onClick={onFav} style={{ background:isFav?"rgba(201,168,76,0.15)":"transparent", border:`1px solid ${isFav?GOLD:GOLD_DIM}`, borderRadius:8, width:34, height:34, cursor:"pointer", color:isFav?GOLD:"#6b5c3e", fontSize:14, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          {isFav?"★":"☆"}
+        </button>
+        <button onClick={onCopy} style={{ background:isCopied?"rgba(201,168,76,0.15)":"transparent", border:`1px solid ${isCopied?GOLD:GOLD_DIM}`, borderRadius:8, width:34, height:34, cursor:"pointer", color:isCopied?GOLD:"#6b5c3e", fontSize:isCopied?10:13, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          {isCopied?"✓":"📋"}
+        </button>
+      </div>
+    </div>
+  );
+});
+
+// ═══════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════
+export default function PrayerBank() {
+  const t = UI.fr;
+  const [tab, setTab] = useState(0);
+  const [themeIdx, setThemeIdx] = useState(0);
+  const [themeSubIdx, setThemeSubIdx] = useState(0);
+  const [showThemeDesc, setShowThemeDesc] = useState(false);
+  const [timerMin, setTimerMin] = useState(30);
+  const [seconds, setSeconds] = useState(0);
+  const [running, setRunning] = useState(false);
+  const timerRef = useRef(null);
+  const [sessMode, setSessMode] = useState("guided");
+  const [sessDuration, setSessDuration] = useState(30);
+  const [sessInterval, setSessInterval] = useState(2);
+  const [sessTheme, setSessTheme] = useState("all");
+  const [sessionPrayers, setSessionPrayers] = useState([]);
+  const [sessIdx, setSessIdx] = useState(0);
+  const [sessRunning, setSessRunning] = useState(false);
+  const [sessDone, setSessDone] = useState(false);
+  const [sessSecsLeft, setSessSecsLeft] = useState(0);
+  const [sessCount, setSessCount] = useState(0);
+  const sessTimerRef = useRef(null);
+  const [checked, setChecked] = useState({});
+  const [favorites, setFavorites] = useState({});
+  const [copiedId, setCopiedId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showFavorites, setShowFavorites] = useState(false);
+  const [declCatFilter, setDeclCatFilter] = useState("Tous");
+  const [actCatFilter, setActCatFilter] = useState("Tous");
+  const [spiritCatFilter, setSpiritCatFilter] = useState("Tous");
+  const [praiseCatFilter, setPraiseCatFilter] = useState("Tous");
+  const [expandedSpirit, setExpandedSpirit] = useState(null);
+  const [expandedMedit, setExpandedMedit] = useState(null);
+  const [expandedAct, setExpandedAct] = useState(null);
+  const [focusPrayer, setFocusPrayer] = useState(null);
+  const [activeTtsPrayerKey, setActiveTtsPrayerKey] = useState(null);
+  const [bibleSection, setBibleSection] = useState("AT");
+  const [bibleBook, setBibleBook] = useState(null);
+  const [bibleChapter, setBibleChapter] = useState(null);
+  const [bibleVerseScroll, setBibleVerseScroll] = useState(false);
+  const [verseScrollIdx, setVerseScrollIdx] = useState(0);
+  const [journal, setJournal] = useState([]);
+  const [jText, setJText] = useState("");
+  const [jMood, setJMood] = useState("🙏");
+  const [jCategory, setJCategory] = useState("Prière");
+  const [prayerTimes, setPrayerTimes] = useState(["06:00","12:00","21:00"]);
+  const [bibleAlarmTimes, setBibleAlarmTimes] = useState([]);
+  const [newTime, setNewTime] = useState("08:00");
+  const [newBibleTime, setNewBibleTime] = useState("07:00");
+  const [alarmFlash, setAlarmFlash] = useState(null);
+  const [bibleAlarmFlash, setBibleAlarmFlash] = useState(null);
+  const alarmRef = useRef(null);
+  const [ttsPlaying, setTtsPlaying] = useState(false);
+  const [voices, setVoices] = useState([]);
+  const [selectedVoice, setSelectedVoice] = useState(null);
+  const [autoRead, setAutoRead] = useState(false);
+  const initChallenges = () => ({ daily: CHALLENGES_DATA.daily.map(c => ({...c,progress:0,completed:false})), weekly: CHALLENGES_DATA.weekly.map(c => ({...c,progress:0,completed:false})), resetDate: new Date().toDateString() });
+  const [challenges, setChallenges] = useState(initChallenges);
+  const [darkMode, setDarkMode] = useState(true);
+  const [meditTab, setMeditTab] = useState(0);
+  const [prayerTimeGoal, setPrayerTimeGoal] = useState(30);
+  const [bibleTimeGoal, setBibleTimeGoal] = useState(15);
+  const [prayerTimeDone, setPrayerTimeDone] = useState(0);
+  const [bibleTimeDone, setBibleTimeDone] = useState(0);
+  const [lastResetDate, setLastResetDate] = useState(new Date().toDateString());
+  const [randomPrayer, setRandomPrayer] = useState(null);
+
+  const allPrayers = useMemo(() => THEMES_DATA.flatMap(th => th.sub.flatMap(s => s.prayers)), []);
+  const totalPrayers = allPrayers.length;
+  const completedCount = useMemo(() => Object.values(checked).filter(Boolean).length, [checked]);
+  const favCount = useMemo(() => Object.keys(favorites).length, [favorites]);
+  const textColor = darkMode ? "#e8d4a2" : "#2a1800";
+  const bgColor = darkMode ? "#06030000" : "#fdf6e3";
+  const cardBg = darkMode ? "rgba(18,12,4,0.80)" : "rgba(255,248,232,0.9)";
+
+  const curTheme = useMemo(() => THEMES_DATA[themeIdx], [themeIdx]);
+  const curSub = useMemo(() => curTheme?.sub[themeSubIdx], [curTheme, themeSubIdx]);
+
+  const searchResults = useMemo(() => {
+    if (searchQuery.length <= 1) return [];
+    const q = searchQuery.toLowerCase();
+    return [
+      ...THEMES_DATA.flatMap(th => th.sub.flatMap((s,si) => s.prayers.filter(p => p.toLowerCase().includes(q)).map((p,i) => ({ id:`${th.id}-${si}-${i}`, text:p, type:"Prière", label:th.label })))),
+      ...PROPHETIC.filter(p => p.text.toLowerCase().includes(q)).map((p,i) => ({ id:`decl-${i}`, text:p.text, type:"Déclaration", label:p.cat })),
+      ...PRAISES.filter(p => p.text.toLowerCase().includes(q)).map((p,i) => ({ id:`praise-${i}`, text:p.text, type:"Éloge", label:p.cat })),
+    ].slice(0, 25);
+  }, [searchQuery]);
+
+  const actCats = useMemo(() => ["Tous", ...new Set(ACTS.map(a => a.cat))], []);
+  const spiritCats = useMemo(() => ["Tous", ...new Set(SPIRITS.map(s => s.cat))], []);
+  const praiseCats = useMemo(() => ["Tous", ...new Set(PRAISES.map(p => p.cat))], []);
+  const declCats = useMemo(() => ["Tous", ...new Set(PROPHETIC.map(p => p.cat))], []);
+
+  useEffect(() => {
+    if (!bibleVerseScroll) return;
+    const iv = setInterval(() => setVerseScrollIdx(i => (i+1) % PRAYER_VERSES.length), 8000);
+    return () => clearInterval(iv);
+  }, [bibleVerseScroll]);
+
+  useEffect(() => {
+    try {
+      window.storage.get("pb-journal").then(r => r && setJournal(JSON.parse(r.value)));
+      window.storage.get("pb-favorites").then(r => r && setFavorites(JSON.parse(r.value)));
+      window.storage.get("pb-checked").then(r => r && setChecked(JSON.parse(r.value)));
+      window.storage.get("pb-sess-count").then(r => r && setSessCount(Number(r.value)));
+      window.storage.get("pb-challenges").then(r => r && setChallenges(JSON.parse(r.value)));
+      window.storage.get("pb-times").then(r => r && setPrayerTimes(JSON.parse(r.value)));
+      window.storage.get("pb-dark").then(r => r && setDarkMode(r.value === "true"));
+      window.storage.get("pb-prayer-time-done").then(r => r && setPrayerTimeDone(Number(r.value)));
+      window.storage.get("pb-bible-time-done").then(r => r && setBibleTimeDone(Number(r.value)));
+      window.storage.get("pb-last-reset").then(r => r && setLastResetDate(r.value));
+    } catch {}
+  }, []);
+
+  const persist = useCallback((key, val) => {
+    try { window.storage.set(key, JSON.stringify(val)); } catch {}
+  }, []);
+
+  useEffect(() => {
+    const today = new Date().toDateString();
+    if (lastResetDate !== today) {
+      setPrayerTimeDone(0); setBibleTimeDone(0); setLastResetDate(today);
+      persist("pb-prayer-time-done", 0); persist("pb-bible-time-done", 0); persist("pb-last-reset", today);
+    }
+  }, [lastResetDate, persist]);
+
+  useEffect(() => {
+    if (!window.speechSynthesis) return;
+    const load = () => {
+      const all = window.speechSynthesis.getVoices();
+      const filtered = all.filter(v => v.lang.startsWith("fr"));
+      setVoices(filtered.length ? filtered : all);
+      if (!selectedVoice && filtered.length) setSelectedVoice(filtered[0]);
+    };
+    window.speechSynthesis.onvoiceschanged = load;
+    load();
+  }, []);
+
+  const speak = useCallback((text, key=null, onEnd) => {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang = "fr-FR"; utt.rate = 0.82;
+    if (selectedVoice) utt.voice = selectedVoice;
+    utt.onstart = () => { setTtsPlaying(true); setActiveTtsPrayerKey(key); };
+    utt.onend = () => { setTtsPlaying(false); setActiveTtsPrayerKey(null); if (onEnd) onEnd(); };
+    window.speechSynthesis.speak(utt);
+  }, [selectedVoice]);
+
+  const stopSpeak = useCallback(() => {
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    setTtsPlaying(false); setActiveTtsPrayerKey(null);
+  }, []);
+
+  useEffect(() => {
+    if (running) {
+      timerRef.current = setInterval(() => {
+        setSeconds(s => {
+          if (s <= 1) { clearInterval(timerRef.current); setRunning(false); return 0; }
+          if (s % 60 === 0) updateChallenge("timer", 1);
+          return s - 1;
+        });
+      }, 1000);
+    } else clearInterval(timerRef.current);
+    return () => clearInterval(timerRef.current);
+  }, [running]);
+
+  useEffect(() => {
+    if (sessRunning && !sessDone) {
+      sessTimerRef.current = setInterval(() => {
+        setSessSecsLeft(s => {
+          if (s <= 1) {
+            clearInterval(sessTimerRef.current);
+            if (sessIdx < sessionPrayers.length - 1) {
+              const next = sessIdx + 1;
+              setSessIdx(next);
+              const ns = sessInterval * 60;
+              setSessSecsLeft(ns);
+              if (autoRead) speak(sessionPrayers[next].text, `sess-${next}`);
+              return ns;
+            } else {
+              setSessRunning(false); setSessDone(true);
+              const nc = sessCount + 1; setSessCount(nc);
+              try { window.storage.set("pb-sess-count", String(nc)); } catch {}
+              updateChallenge("session");
+              return 0;
+            }
+          }
+          return s - 1;
+        });
+      }, 1000);
+    } else clearInterval(sessTimerRef.current);
+    return () => clearInterval(sessTimerRef.current);
+  }, [sessRunning, sessDone, sessIdx, sessInterval, autoRead, sessionPrayers, sessCount, speak]);
+
+  useEffect(() => {
+    const check = () => {
+      const now = new Date();
+      const hhmm = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
+      if (prayerTimes.includes(hhmm) && alarmFlash !== hhmm) {
+        setAlarmFlash(hhmm);
+        clearTimeout(alarmRef.current);
+        alarmRef.current = setTimeout(() => setAlarmFlash(null), 90000);
+      }
+      if (bibleAlarmTimes.includes(hhmm) && bibleAlarmFlash !== hhmm) {
+        setBibleAlarmFlash(hhmm);
+        setTimeout(() => setBibleAlarmFlash(null), 90000);
+      }
+    };
+    const iv = setInterval(check, 30000);
+    return () => clearInterval(iv);
+  }, [prayerTimes, bibleAlarmTimes, alarmFlash, bibleAlarmFlash]);
+
+  const toggleChecked = useCallback((key) => {
+    setChecked(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      persist("pb-checked", next);
+      if (!prev[key]) updateChallenge("check");
+      return next;
+    });
+  }, [persist]);
+
+  const toggleFav = useCallback((key, item) => {
+    setFavorites(prev => {
+      const next = { ...prev };
+      if (next[key]) delete next[key]; else next[key] = item;
+      persist("pb-favorites", next);
+      return next;
+    });
+  }, [persist]);
+
+  const copyText = useCallback((id, text) => {
+    navigator.clipboard?.writeText(text).catch(() => {});
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  }, []);
+
+  const updateChallenge = useCallback((type, amount=1) => {
+    setChallenges(prev => {
+      const next = { ...prev };
+      next.daily = prev.daily.map(c => {
+        if (c.type === type && !c.completed) {
+          const np = Math.min(c.target, c.progress + amount);
+          return { ...c, progress: np, completed: np >= c.target };
+        }
+        return c;
+      });
+      next.weekly = prev.weekly.map(c => {
+        if (c.type === type && !c.completed) {
+          const np = Math.min(c.target, c.progress + amount);
+          return { ...c, progress: np, completed: np >= c.target };
+        }
+        return c;
+      });
+      persist("pb-challenges", next);
+      return next;
+    });
+  }, [persist]);
+
+  const buildSession = useCallback(() => {
+    const pool = sessTheme === "all"
+      ? THEMES_DATA.flatMap(th => th.sub.flatMap(s => s.prayers.map(p => ({ text:p, label:th.label }))))
+      : THEMES_DATA.find(th => th.id === sessTheme)?.sub.flatMap(s => s.prayers.map(p => ({ text:p, label:s.label }))) || [];
+    const total = Math.max(1, Math.floor(sessDuration / sessInterval));
+    const shuffled = [...pool].sort(() => Math.random() - 0.5).slice(0, total);
+    setSessionPrayers(shuffled);
+    setSessIdx(0); setSessDone(false); setSessRunning(false);
+    setSessSecsLeft(sessInterval * 60);
+  }, [sessTheme, sessDuration, sessInterval]);
+
+  const saveJournal = useCallback(() => {
+    if (!jText.trim()) return;
+    const entry = { id: Date.now(), text: jText, mood: jMood, category: jCategory, date: new Date().toLocaleDateString("fr-FR") };
+    const next = [entry, ...journal];
+    setJournal(next); setJText("");
+    persist("pb-journal", next);
+    updateChallenge("journal");
+  }, [jText, jMood, jCategory, journal, persist, updateChallenge]);
+
+  const pickRandom = useCallback(() => {
+    const all = THEMES_DATA.flatMap(th => th.sub.flatMap(s => s.prayers));
+    setRandomPrayer(all[Math.floor(Math.random() * all.length)]);
+  }, []);
+
+  const bg = darkMode
+    ? "linear-gradient(180deg, #0a0500 0%, #0e0800 40%, #080400 100%)"
+    : "linear-gradient(180deg, #fdf6e3 0%, #fef9ee 100%)";
+
+  return (
+    <div style={{ minHeight:"100vh", background:bg, paddingBottom:90 }}>
+
+      {/* ── Alarm flash */}
+      {alarmFlash && (
+        <div style={{ position:"fixed", top:0, left:0, right:0, zIndex:999, background:`linear-gradient(90deg, #8b4500, ${GOLD}, #8b4500)`, padding:"10px 16px", textAlign:"center" }}>
+          <p style={{ color:"#1a0f00", fontSize:12, fontWeight:"bold", margin:0, fontFamily:"'Cinzel',Georgia,serif", letterSpacing:2 }}>⏰ HEURE DE PRIÈRE — {alarmFlash}</p>
+          <button onClick={() => setAlarmFlash(null)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"transparent", border:"none", color:"#1a0f00", fontSize:16, cursor:"pointer" }}>×</button>
+        </div>
+      )}
+      {bibleAlarmFlash && (
+        <div style={{ position:"fixed", top:alarmFlash?46:0, left:0, right:0, zIndex:998, background:"linear-gradient(90deg, #005060, #00aab5, #005060)", padding:"10px 16px", textAlign:"center" }}>
+          <p style={{ color:"#fff", fontSize:12, fontWeight:"bold", margin:0, fontFamily:"'Cinzel',Georgia,serif", letterSpacing:2 }}>📖 HEURE DE LECTURE — {bibleAlarmFlash}</p>
+          <button onClick={() => setBibleAlarmFlash(null)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"transparent", border:"none", color:"#fff", fontSize:16, cursor:"pointer" }}>×</button>
+        </div>
+      )}
+
+      {/* ── Header */}
+      <div style={{ background:`linear-gradient(180deg, rgba(10,5,0,0.98) 0%, rgba(18,10,0,0.95) 100%)`, padding:"16px 16px 0", borderBottom:`1px solid ${GOLD_DIM}`, position:"sticky", top:0, zIndex:100, backdropFilter:"blur(12px)" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:4 }}>
+          <div>
+            <h1 style={{ color:GOLD, fontSize:18, fontFamily:"'Cinzel',Georgia,serif", letterSpacing:4, margin:0, textShadow:`0 0 30px ${GOLD_GLOW}` }}>{t.title}</h1>
+            <p style={{ color:"#8b6914", fontSize:7, letterSpacing:3, margin:"2px 0 0", fontFamily:"'Cinzel',Georgia,serif" }}>{t.subtitle}</p>
+          </div>
+          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+            <button onClick={pickRandom} style={{ background:GOLD_FAINT, border:`1px solid ${GOLD_DIM}`, borderRadius:8, padding:"5px 10px", color:GOLD, fontSize:9, cursor:"pointer", fontFamily:"Georgia,serif" }}>🎲</button>
+            <button onClick={() => { setDarkMode(d => !d); try { window.storage.set("pb-dark", String(!darkMode)); } catch {} }} style={{ background:GOLD_FAINT, border:`1px solid ${GOLD_DIM}`, borderRadius:8, padding:"5px 8px", color:GOLD, fontSize:11, cursor:"pointer" }}>
+              {darkMode ? "☀️" : "🌙"}
+            </button>
+          </div>
+        </div>
+
+        {/* Random prayer bubble */}
+        {randomPrayer && (
+          <div style={{ background:"rgba(201,168,76,0.08)", border:`1px solid ${GOLD_DIM}`, borderRadius:10, padding:"10px 12px", marginBottom:8 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+              <p style={{ color:textColor, fontSize:13, fontStyle:"italic", lineHeight:1.6, margin:0, fontFamily:"'EB Garamond',Georgia,serif", flex:1, paddingRight:8 }}>🎲 {randomPrayer}</p>
+              <button onClick={() => setRandomPrayer(null)} style={{ background:"transparent", border:"none", color:"#6b5c3e", fontSize:14, cursor:"pointer", flexShrink:0 }}>×</button>
+            </div>
+          </div>
+        )}
+
+        {/* Search */}
+        <div style={{ position:"relative", marginBottom:8 }}>
+          <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="🔍 Rechercher prières, déclarations..." style={{ width:"100%", background:"rgba(201,168,76,0.06)", border:`1px solid ${GOLD_DIM}`, borderRadius:20, padding:"7px 14px", color:textColor, fontSize:12, fontFamily:"Georgia,serif", outline:"none", boxSizing:"border-box" }} />
+          {searchQuery && <button onClick={() => setSearchQuery("")} style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", background:"transparent", border:"none", color:"#6b5c3e", fontSize:16, cursor:"pointer" }}>×</button>}
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display:"flex", gap:3, overflowX:"auto", paddingBottom:8, scrollbarWidth:"none" }}>
+          {t.tabs.map((label, i) => (
+            <button key={i} onClick={() => setTab(i)} style={{ flexShrink:0, background:tab===i?`linear-gradient(135deg, ${GOLD}, #a87a2a)`:"transparent", color:tab===i?"#1a0f00":GOLD, border:`1px solid ${tab===i?GOLD:GOLD_DIM}`, borderRadius:10, padding:"5px 9px", fontSize:8, cursor:"pointer", fontFamily:"Georgia,serif", whiteSpace:"pre", lineHeight:1.3, fontWeight:tab===i?"bold":"normal", letterSpacing:0.5 }}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Content */}
+      <div style={{ padding:"12px 12px 0" }}>
+
+        {/* Search results */}
+        {searchQuery.length > 1 && (
+          <div className="fade-in">
+            <Label accent>RÉSULTATS ({searchResults.length})</Label>
+            {searchResults.length === 0 ? <p style={{ color:"#6b5c3e", fontSize:13, textAlign:"center", padding:"20px 0" }}>{t.noResult}</p> : searchResults.map(r => (
+              <Card key={r.id} style={{ borderLeft:`3px solid ${GOLD_DIM}` }}>
+                <p style={{ color:"#8b6914", fontSize:8, letterSpacing:1, margin:"0 0 4px" }}>{r.type} · {r.label}</p>
+                <p style={{ color:textColor, fontSize:13, fontStyle:"italic", lineHeight:1.7, margin:0, fontFamily:"'EB Garamond',Georgia,serif" }}>{r.text}</p>
+                <div style={{ display:"flex", gap:8, marginTop:8 }}>
+                  <button onClick={() => speak(r.text)} style={{ background:"transparent", border:"none", color:GOLD, cursor:"pointer", fontSize:10, fontFamily:"Georgia,serif" }}>▶ Lire</button>
+                  <button onClick={() => copyText(`sr-${r.id}`, r.text)} style={{ background:"transparent", border:"none", color:copiedId===`sr-${r.id}`?GOLD:"#6b5c3e", cursor:"pointer", fontSize:10, fontFamily:"Georgia,serif" }}>{copiedId===`sr-${r.id}`?"✓":"📋"}</button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* ─── TAB 0: Mes Thèmes de Prière ─── */}
+        {tab===0 && !searchQuery && (
+          <div className="fade-in">
+            {/* Verset scrollant */}
+            <div style={{ background:"rgba(201,168,76,0.06)", border:`1px solid ${GOLD_DIM}`, borderRadius:10, padding:"10px 14px", marginBottom:10, cursor:"pointer" }} onClick={() => setBibleVerseScroll(v=>!v)}>
+              <p style={{ color:"#8b6914", fontSize:8, letterSpacing:2, margin:"0 0 4px", fontFamily:"'Cinzel',Georgia,serif" }}>{t.verseOfDay}</p>
+              <p style={{ color:textColor, fontSize:13, fontStyle:"italic", lineHeight:1.6, margin:0, fontFamily:"'EB Garamond',Georgia,serif" }}>« {PRAYER_VERSES[verseScrollIdx].text} »</p>
+              <p style={{ color:"#8b6914", fontSize:10, margin:"4px 0 0", fontFamily:"Georgia,serif" }}>— {PRAYER_VERSES[verseScrollIdx].ref}</p>
+            </div>
+
+            {/* Theme selector */}
+            <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:6, scrollbarWidth:"none", marginBottom:10 }}>
+              {THEMES_DATA.map((th,i) => (
+                <button key={th.id} onClick={() => { setThemeIdx(i); setThemeSubIdx(0); setShowThemeDesc(false); }} style={{ flexShrink:0, background:themeIdx===i?`${th.color}22`:"transparent", color:themeIdx===i?th.color:GOLD, border:`1px solid ${themeIdx===i?th.color:GOLD_DIM}`, borderRadius:10, padding:"7px 10px", fontSize:10, cursor:"pointer", fontFamily:"Georgia,serif", letterSpacing:0.5, fontWeight:themeIdx===i?"bold":"normal" }}>
+                  {th.icon} {th.label.split(",")[0].split("&")[0].trim()}
+                </button>
+              ))}
+            </div>
+
+            {/* Theme header with description toggle */}
+            <Card glow style={{ borderLeft:`3px solid ${curTheme?.color||GOLD}`, marginBottom:8 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                <div style={{ flex:1 }}>
+                  <p style={{ color:curTheme?.color||GOLD, fontSize:13, fontWeight:"bold", margin:"0 0 2px", fontFamily:"'Cinzel',Georgia,serif" }}>{curTheme?.icon} {curTheme?.label}</p>
+                  <p style={{ color:"#8b6914", fontSize:9, margin:0, fontFamily:"Georgia,serif" }}>{curTheme?.refs}</p>
+                </div>
+                <button onClick={() => setShowThemeDesc(d=>!d)} style={{ background:showThemeDesc?GOLD_GLOW:"transparent", border:`1px solid ${GOLD_DIM}`, borderRadius:8, padding:"4px 10px", color:GOLD, fontSize:9, cursor:"pointer", flexShrink:0, marginLeft:8, fontFamily:"Georgia,serif" }}>
+                  {showThemeDesc?"▲ Moins":"ℹ️ Plus"}
+                </button>
+              </div>
+            </Card>
+
+            {/* Theme description */}
+            {showThemeDesc && (
+              <div className="fade-in">
+                <InfoBox title={t.themeDesc} icon="📖">{curTheme?.description}</InfoBox>
+                <InfoBox title={t.importance} icon="⚡">{curTheme?.importance}</InfoBox>
+              </div>
+            )}
+
+            {/* Sub-theme selector */}
+            <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:10 }}>
+              {curTheme?.sub.map((s,i) => (
+                <button key={i} onClick={() => setThemeSubIdx(i)} style={{ background:themeSubIdx===i?`linear-gradient(135deg, ${curTheme.color}33, ${curTheme.color}11)`:"transparent", color:themeSubIdx===i?curTheme.color:GOLD, border:`1px solid ${themeSubIdx===i?curTheme.color:GOLD_DIM}`, borderRadius:10, padding:"5px 10px", fontSize:9, cursor:"pointer", fontFamily:"Georgia,serif", letterSpacing:0.5 }}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Sub-theme description */}
+            {curSub?.description && (
+              <div style={{ background:"rgba(201,168,76,0.05)", border:`1px solid ${GOLD_FAINT}`, borderLeft:`2px solid ${curTheme?.color||GOLD}`, borderRadius:8, padding:"8px 12px", marginBottom:10 }}>
+                <p style={{ color:"#c8b890", fontSize:12, lineHeight:1.65, margin:0, fontFamily:"'EB Garamond',Georgia,serif", fontStyle:"italic" }}>{curSub.description}</p>
+              </div>
+            )}
+
+            {/* Favorites toggle */}
+            <div style={{ display:"flex", gap:6, marginBottom:10, alignItems:"center" }}>
+              <Btn small active={showFavorites} onClick={() => setShowFavorites(f=>!f)}>⭐ {t.favorites} ({favCount})</Btn>
+              <div style={{ flex:1 }} />
+              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                <span style={{ color:"#6b5c3e", fontSize:9, fontFamily:"Georgia,serif" }}>Auto</span>
+                <button onClick={() => setAutoRead(a=>!a)} style={{ background:autoRead?GOLD_GLOW:GOLD_FAINT, border:`1px solid ${autoRead?GOLD:GOLD_DIM}`, borderRadius:12, padding:"3px 8px", color:autoRead?GOLD:"#6b5c3e", fontSize:9, cursor:"pointer", fontFamily:"Georgia,serif" }}>🔊</button>
+              </div>
+            </div>
+
+            {/* Prayer list */}
+            {showFavorites ? (
+              Object.keys(favorites).length === 0 ? <p style={{ color:"#6b5c3e", textAlign:"center", padding:"20px 0", fontSize:13 }}>{t.noFav}</p> :
+              Object.entries(favorites).map(([key, item]) => (
+                <PrayerCard key={key} text={item.text} index={0} checked={!!checked[key]} onCheck={() => toggleChecked(key)} onSpeak={() => speak(item.text, key)} onFav={() => toggleFav(key, item)} onCopy={() => copyText(key, item.text)} isFav={true} isCopied={copiedId===key} ttsActive={activeTtsPrayerKey===key} textColor={textColor} themeColor={GOLD} />
+              ))
+            ) : (
+              curSub?.prayers.map((p, i) => {
+                const key = `${themeIdx}-${themeSubIdx}-${i}`;
+                return <PrayerCard key={key} text={p} index={i} checked={!!checked[key]} onCheck={() => toggleChecked(key)} onSpeak={() => speak(p, key)} onFav={() => toggleFav(key, {text:p, label:curSub.label})} onCopy={() => copyText(key, p)} isFav={!!favorites[key]} isCopied={copiedId===key} ttsActive={activeTtsPrayerKey===key} textColor={textColor} themeColor={curTheme?.color||GOLD} />;
+              })
+            )}
+
+            {/* Progress */}
+            <Card style={{ marginTop:6 }}>
+              <Label>{t.progress}</Label>
+              <ProgressBar value={completedCount} max={totalPrayers} />
+              <p style={{ color:"#8b6914", fontSize:10, margin:"6px 0 0", fontFamily:"Georgia,serif", textAlign:"right" }}>{completedCount}/{totalPrayers} prières accomplies</p>
+            </Card>
+
+            {/* Timer */}
+            <Card>
+              <Label accent>{t.timer}</Label>
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+                <div style={{ fontSize:28, fontFamily:"'Cinzel',Georgia,serif", color:GOLD, letterSpacing:2, flex:1, textAlign:"center" }}>{fmtSecs(running||seconds>0?seconds:timerMin*60)}</div>
+                <input type="range" min={5} max={120} step={5} value={timerMin} onChange={e => { setTimerMin(Number(e.target.value)); setSeconds(0); }} style={{ width:80, accentColor:GOLD }} />
+                <span style={{ color:"#8b6914", fontSize:10, fontFamily:"Georgia,serif", minWidth:30 }}>{timerMin}m</span>
+              </div>
+              <div style={{ display:"flex", gap:6 }}>
+                <Btn active={running} onClick={() => { if(!running && seconds===0) setSeconds(timerMin*60); setRunning(r=>!r); }}>{running?t.pause:t.start}</Btn>
+                <Btn onClick={() => { setRunning(false); setSeconds(0); }}>{t.reset}</Btn>
+              </div>
+            </Card>
+
+            {/* Prayer time tracking */}
+            <Card>
+              <Label accent>⏱ SUIVI DU TEMPS DE PRIÈRE</Label>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+                <div style={{ flex:1 }}>
+                  <p style={{ color:"#8b6914", fontSize:9, margin:"0 0 4px", fontFamily:"Georgia,serif" }}>Prière: {prayerTimeDone}/{prayerTimeGoal} min</p>
+                  <ProgressBar value={prayerTimeDone} max={prayerTimeGoal} color={GOLD} />
+                </div>
+                <button onClick={() => { const n=prayerTimeDone+5; setPrayerTimeDone(n); persist("pb-prayer-time-done",n); }} style={{ background:GOLD_FAINT, border:`1px solid ${GOLD_DIM}`, borderRadius:8, padding:"4px 8px", color:GOLD, fontSize:10, cursor:"pointer" }}>+5m</button>
+              </div>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ flex:1 }}>
+                  <p style={{ color:"#8b6914", fontSize:9, margin:"0 0 4px", fontFamily:"Georgia,serif" }}>Lecture Bible: {bibleTimeDone}/{bibleTimeGoal} min</p>
+                  <ProgressBar value={bibleTimeDone} max={bibleTimeGoal} color="#4fc3f7" />
+                </div>
+                <button onClick={() => { const n=bibleTimeDone+5; setBibleTimeDone(n); persist("pb-bible-time-done",n); }} style={{ background:"rgba(79,195,247,0.08)", border:`1px solid rgba(79,195,247,0.25)`, borderRadius:8, padding:"4px 8px", color:"#4fc3f7", fontSize:10, cursor:"pointer" }}>+5m</button>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* ─── TAB 1: Session Guidée ─── */}
+        {tab===1 && (
+          <div className="fade-in">
+            {!sessRunning && !sessDone && sessionPrayers.length===0 && (
+              <Card>
+                <Label accent>{t.session}</Label>
+                <div style={{ marginBottom:10 }}>
+                  <p style={{ color:"#8b6914", fontSize:9, margin:"0 0 4px", fontFamily:"Georgia,serif", letterSpacing:1 }}>THÈME</p>
+                  <select value={sessTheme} onChange={e => setSessTheme(e.target.value)} style={{ width:"100%", background:"rgba(201,168,76,0.06)", border:`1px solid ${GOLD_DIM}`, borderRadius:8, padding:"7px 10px", color:textColor, fontSize:12, fontFamily:"Georgia,serif" }}>
+                    <option value="all">Tous les thèmes</option>
+                    {THEMES_DATA.map(th => <option key={th.id} value={th.id}>{th.icon} {th.label}</option>)}
+                  </select>
+                </div>
+                <div style={{ display:"flex", gap:12, marginBottom:16 }}>
+                  <div style={{ flex:1 }}>
+                    <p style={{ color:"#8b6914", fontSize:9, margin:"0 0 4px", fontFamily:"Georgia,serif", letterSpacing:1 }}>{t.duration} (min)</p>
+                    <input type="number" min={5} max={120} value={sessDuration} onChange={e => setSessDuration(Number(e.target.value))} style={{ width:"100%", background:"rgba(201,168,76,0.06)", border:`1px solid ${GOLD_DIM}`, borderRadius:8, padding:"7px 10px", color:textColor, fontSize:13, fontFamily:"Georgia,serif", boxSizing:"border-box" }} />
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <p style={{ color:"#8b6914", fontSize:9, margin:"0 0 4px", fontFamily:"Georgia,serif", letterSpacing:1 }}>{t.interval}</p>
+                    <input type="number" min={1} max={15} value={sessInterval} onChange={e => setSessInterval(Number(e.target.value))} style={{ width:"100%", background:"rgba(201,168,76,0.06)", border:`1px solid ${GOLD_DIM}`, borderRadius:8, padding:"7px 10px", color:textColor, fontSize:13, fontFamily:"Georgia,serif", boxSizing:"border-box" }} />
+                  </div>
+                </div>
+                <button onClick={buildSession} style={{ width:"100%", background:`linear-gradient(135deg, ${GOLD}, #a87a2a)`, border:"none", borderRadius:12, padding:"12px", color:"#1a0f00", fontSize:13, fontWeight:"bold", cursor:"pointer", fontFamily:"'Cinzel',Georgia,serif", letterSpacing:2 }}>{t.build}</button>
+              </Card>
+            )}
+
+            {sessionPrayers.length > 0 && !sessDone && (
+              <div>
+                <Card glow>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+                    <Label>{sessIdx+1}/{sessionPrayers.length}</Label>
+                    <div style={{ fontSize:22, fontFamily:"'Cinzel',Georgia,serif", color:GOLD }}>{fmtSecs(sessSecsLeft)}</div>
+                  </div>
+                  <ProgressBar value={sessIdx} max={sessionPrayers.length-1} style={{ marginBottom:12 }} />
+                  <p style={{ color:"#8b6914", fontSize:9, letterSpacing:1, margin:"0 0 8px", fontFamily:"'Cinzel',Georgia,serif" }}>{sessionPrayers[sessIdx]?.label}</p>
+                  <p style={{ color:textColor, fontSize:15, lineHeight:1.8, margin:"0 0 12px", fontStyle:"italic", fontFamily:"'EB Garamond',Georgia,serif" }}>{sessionPrayers[sessIdx]?.text}</p>
+                  <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                    <Btn active={sessRunning} onClick={() => setSessRunning(r=>!r)}>{sessRunning?"⏸ Pause":"▶ Démarrer"}</Btn>
+                    {sessIdx > 0 && <Btn onClick={() => { setSessIdx(i=>i-1); setSessSecsLeft(sessInterval*60); }}>{t.prev}</Btn>}
+                    {sessIdx < sessionPrayers.length-1 && <Btn onClick={() => { setSessIdx(i=>i+1); setSessSecsLeft(sessInterval*60); }}>{t.next}</Btn>}
+                    <Btn onClick={() => speak(sessionPrayers[sessIdx]?.text||"")}>{t.read}</Btn>
+                    <Btn onClick={() => { setSessRunning(false); setSessionPrayers([]); setSessDone(false); }}>↺ Reset</Btn>
+                  </div>
+                </Card>
+                <p style={{ color:"#6b5c3e", fontSize:10, textAlign:"center", fontFamily:"Georgia,serif", marginTop:8 }}>Session : {sessDuration} min · {sessInterval} min par prière · {sessionPrayers.length} requêtes</p>
+              </div>
+            )}
+
+            {sessDone && (
+              <Card glow style={{ textAlign:"center", padding:"30px 20px" }}>
+                <div style={{ fontSize:48, marginBottom:12 }}>🙏</div>
+                <p style={{ color:GOLD, fontSize:16, fontFamily:"'Cinzel',Georgia,serif", letterSpacing:2, margin:"0 0 8px" }}>{t.sessionDone}</p>
+                <p style={{ color:"#8b6914", fontSize:12, margin:"0 0 16px" }}>Sessions complétées : {sessCount}</p>
+                <Btn onClick={() => { setSessionPrayers([]); setSessDone(false); }}>↺ Nouvelle session</Btn>
+              </Card>
+            )}
+
+            {/* Prayer times alarm */}
+            <Card style={{ marginTop:10 }}>
+              <Label accent>⏰ RAPPELS DE PRIÈRE</Label>
+              <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:8 }}>
+                {prayerTimes.map(pt => (
+                  <div key={pt} style={{ background:GOLD_FAINT, border:`1px solid ${GOLD_DIM}`, borderRadius:8, padding:"4px 10px", display:"flex", alignItems:"center", gap:4 }}>
+                    <span style={{ color:GOLD, fontSize:11, fontFamily:"Georgia,serif" }}>{pt}</span>
+                    <button onClick={() => { const n=prayerTimes.filter(x=>x!==pt); setPrayerTimes(n); persist("pb-times",n); }} style={{ background:"transparent", border:"none", color:"#6b5c3e", cursor:"pointer", fontSize:12, padding:0, lineHeight:1 }}>×</button>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display:"flex", gap:6 }}>
+                <input type="time" value={newTime} onChange={e => setNewTime(e.target.value)} style={{ background:"rgba(201,168,76,0.06)", border:`1px solid ${GOLD_DIM}`, borderRadius:8, padding:"5px 8px", color:textColor, fontSize:12, fontFamily:"Georgia,serif", flex:1 }} />
+                <Btn small onClick={() => { if(!prayerTimes.includes(newTime)) { const n=[...prayerTimes,newTime].sort(); setPrayerTimes(n); persist("pb-times",n); } }}>{t.addTime}</Btn>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* ─── TAB 2: Actes Prophétiques ─── */}
+        {tab===2 && (
+          <div className="fade-in">
+            <Card style={{ marginBottom:10 }}>
+              <Label accent>✋ ACTES PROPHÉTIQUES</Label>
+              <p style={{ color:"#c8b890", fontSize:12, lineHeight:1.6, margin:0, fontFamily:"'EB Garamond',Georgia,serif", fontStyle:"italic" }}>
+                Les actes prophétiques sont des actions physiques ordonnées par Dieu qui créent une réalité spirituelle. Ils activent la foi, ouvrent des brèches et libèrent la puissance divine dans des situations bloquées.
+              </p>
+            </Card>
+            <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:10 }}>
+              {actCats.map(c => <Btn key={c} small active={actCatFilter===c} onClick={() => setActCatFilter(c)}>{c}</Btn>)}
+            </div>
+            {ACTS.filter(a => actCatFilter==="Tous" || a.cat===actCatFilter).map((a,i) => (
+              <Card key={i} style={{ cursor:"pointer", borderLeft:`3px solid ${GOLD_DIM}`, borderColor:expandedAct===i?GOLD:GOLD_DIM }} onClick={() => setExpandedAct(expandedAct===i?null:i)}>
+                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                  <span style={{ fontSize:28, flexShrink:0 }}>{a.icon}</span>
+                  <div style={{ flex:1 }}>
+                    <p style={{ color:GOLD, fontSize:13, fontWeight:"bold", margin:"0 0 2px", fontFamily:"'Cinzel',Georgia,serif" }}>{a.title}</p>
+                    <p style={{ color:"#8b6914", fontSize:9, margin:0, fontFamily:"Georgia,serif" }}>{a.cat} · {a.combat} · {a.ref}</p>
+                  </div>
+                  <span style={{ color:GOLD, fontSize:12 }}>{expandedAct===i?"▲":"▼"}</span>
+                </div>
+                {expandedAct===i && (
+                  <div className="fade-in" style={{ marginTop:12 }} onClick={e => e.stopPropagation()}>
+                    <div style={{ background:"rgba(40,30,10,0.5)", borderRadius:10, padding:"10px 12px", marginBottom:10 }}>
+                      <p style={{ color:"#8b6914", fontSize:8, letterSpacing:2, margin:"0 0 6px" }}>INSTRUCTIONS</p>
+                      <p style={{ color:textColor, fontSize:13, lineHeight:1.7, margin:0, fontFamily:"'EB Garamond',Georgia,serif" }}>{a.instruction}</p>
+                    </div>
+                    <div style={{ display:"flex", gap:8 }}>
+                      <button onClick={() => speak(a.instruction)} style={{ background:"transparent", border:"none", color:GOLD, cursor:"pointer", fontSize:11, fontFamily:"Georgia,serif" }}>▶ Lire l'instruction</button>
+                      {ttsPlaying && <button onClick={stopSpeak} style={{ background:"transparent", border:"none", color:"#e87878", cursor:"pointer", fontSize:11 }}>⏹ Stop</button>}
+                    </div>
+                  </div>
+                )}
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* ─── TAB 3: Déclarations Prophétiques ─── */}
+        {tab===3 && (
+          <div className="fade-in">
+            <Card style={{ marginBottom:10 }}>
+              <Label accent>📣 DÉCLARATIONS PROPHÉTIQUES</Label>
+              <p style={{ color:"#c8b890", fontSize:12, lineHeight:1.6, margin:0, fontFamily:"'EB Garamond',Georgia,serif", fontStyle:"italic" }}>
+                La parole confessée avec foi crée la réalité. Romains 10:10 : « C'est par la bouche qu'on fait la confession qui sauve. » Proclamez ces déclarations à haute voix avec conviction.
+              </p>
+            </Card>
+            <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:10 }}>
+              {declCats.map(c => <Btn key={c} small active={declCatFilter===c} onClick={() => setDeclCatFilter(c)}>{c}</Btn>)}
+            </div>
+            {PROPHETIC.filter(p => declCatFilter==="Tous" || p.cat===declCatFilter).map((p,i) => (
+              <Card key={i} style={{ borderLeft:`3px solid ${GOLD_DIM}` }}>
+                <div style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
+                  <div style={{ flex:1 }}>
+                    <p style={{ color:"#8b6914", fontSize:8, letterSpacing:1, margin:"0 0 5px", fontFamily:"'Cinzel',Georgia,serif" }}>{p.cat} · {p.ref}</p>
+                    <p style={{ color:textColor, fontSize:15, lineHeight:1.8, fontStyle:"italic", margin:"0 0 10px", fontFamily:"'EB Garamond',Georgia,serif" }}>« {p.text} »</p>
+                    <div style={{ display:"flex", gap:8 }}>
+                      <button onClick={() => { speak(p.text); updateChallenge("check"); }} style={{ background:"transparent", border:"none", color:GOLD, cursor:"pointer", fontSize:11, fontFamily:"Georgia,serif" }}>▶ Proclamer</button>
+                      <button onClick={() => copyText(`decl-${i}`, p.text)} style={{ background:"transparent", border:"none", color:copiedId===`decl-${i}`?GOLD:"#6b5c3e", cursor:"pointer", fontSize:11, fontFamily:"Georgia,serif" }}>
+                        {copiedId===`decl-${i}`?"✓ Copié":"📋"}
+                      </button>
+                      <button onClick={() => toggleFav(`decl-${i}`, {text:p.text, label:p.cat})} style={{ background:"transparent", border:"none", color:favorites[`decl-${i}`]?GOLD:"#6b5c3e", cursor:"pointer", fontSize:14 }}>
+                        {favorites[`decl-${i}`]?"★":"☆"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* ─── TAB 4: Esprits à Combattre ─── */}
+        {tab===4 && (
+          <div className="fade-in">
+            <Card style={{ marginBottom:10 }}>
+              <Label accent>👁 ESPRITS À COMBATTRE</Label>
+              <p style={{ color:"#c8b890", fontSize:12, lineHeight:1.6, margin:0, fontFamily:"'EB Garamond',Georgia,serif", fontStyle:"italic" }}>
+                Éphésiens 6:12 : « Nous n'avons pas à lutter contre la chair et le sang, mais contre les dominations, contre les autorités, contre les princes des ténèbres. » Identifier l'ennemi est la première étape de la victoire.
+              </p>
+            </Card>
+            <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:10 }}>
+              {spiritCats.map(c => <Btn key={c} small active={spiritCatFilter===c} onClick={() => setSpiritCatFilter(c)}>{c}</Btn>)}
+            </div>
+            {SPIRITS.filter(s => spiritCatFilter==="Tous" || s.cat===spiritCatFilter).map((s,i) => (
+              <Card key={i} style={{ cursor:"pointer", borderLeft:`3px solid ${CRIMSON}44`, borderColor:expandedSpirit===i?"#ef5350":GOLD_DIM }} onClick={() => setExpandedSpirit(expandedSpirit===i?null:i)}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <div>
+                    <p style={{ color:"#ef5350", fontSize:13, fontWeight:"bold", margin:"0 0 2px", fontFamily:"'Cinzel',Georgia,serif" }}>{s.name}</p>
+                    <p style={{ color:"#8b6914", fontSize:9, margin:0, fontFamily:"Georgia,serif" }}>{s.cat} · {s.ref}</p>
+                  </div>
+                  <span style={{ color:GOLD, fontSize:12 }}>{expandedSpirit===i?"▲":"▼"}</span>
+                </div>
+                {expandedSpirit===i && (
+                  <div className="fade-in" style={{ marginTop:10 }} onClick={e => e.stopPropagation()}>
+                    <div style={{ background:"rgba(180,30,20,0.1)", border:"1px solid rgba(180,30,20,0.2)", borderRadius:8, padding:"8px 10px", marginBottom:10 }}>
+                      <p style={{ color:"#e87878", fontSize:8, letterSpacing:1, margin:"0 0 4px" }}>DESCRIPTION</p>
+                      <p style={{ color:textColor, fontSize:12, lineHeight:1.6, margin:0, fontFamily:"'EB Garamond',Georgia,serif" }}>{s.description}</p>
+                    </div>
+                    <div style={{ background:"rgba(40,30,10,0.5)", borderRadius:8, padding:"8px 10px" }}>
+                      <p style={{ color:"#8b6914", fontSize:8, letterSpacing:1, margin:"0 0 4px" }}>PRIÈRE DE COMBAT</p>
+                      <p style={{ color:textColor, fontSize:13, lineHeight:1.7, fontStyle:"italic", margin:"0 0 8px", fontFamily:"'EB Garamond',Georgia,serif" }}>{s.prayer}</p>
+                      <div style={{ display:"flex", gap:8 }}>
+                        <button onClick={() => speak(s.prayer)} style={{ background:"transparent", border:"none", color:GOLD, cursor:"pointer", fontSize:11, fontFamily:"Georgia,serif" }}>▶ Proclamer</button>
+                        <button onClick={() => toggleFav(`spirit-${i}`, {text:s.prayer, label:s.name})} style={{ background:"transparent", border:"none", color:favorites[`spirit-${i}`]?GOLD:"#6b5c3e", cursor:"pointer", fontSize:14 }}>{favorites[`spirit-${i}`]?"★":"☆"}</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* ─── TAB 5: Bible Intégrale ─── */}
+        {tab===5 && (
+          <div className="fade-in">
+            <Card>
+              <Label accent>📖 BIBLE INTÉGRALE</Label>
+              <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+                {["AT","NT"].map(s => <Btn key={s} small active={bibleSection===s} onClick={() => { setBibleSection(s); setBibleBook(null); setBibleChapter(null); }}>{s==="AT"?"Ancien Testament":"Nouveau Testament"}</Btn>)}
+              </div>
+              {!bibleBook && (
+                <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                  {BIBLE_BOOKS[bibleSection].map(book => (
+                    <button key={book.abbr} onClick={() => { setBibleBook(book); setBibleChapter(null); }} style={{ background:GOLD_FAINT, border:`1px solid ${GOLD_DIM}`, borderRadius:8, padding:"5px 9px", color:GOLD, fontSize:10, cursor:"pointer", fontFamily:"Georgia,serif" }}>{book.name}</button>
+                  ))}
+                </div>
+              )}
+              {bibleBook && !bibleChapter && (
+                <div>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+                    <button onClick={() => setBibleBook(null)} style={{ background:"transparent", border:"none", color:"#8b6914", cursor:"pointer", fontSize:11, fontFamily:"Georgia,serif" }}>← Retour</button>
+                    <p style={{ color:GOLD, fontSize:13, fontWeight:"bold", margin:0, fontFamily:"'Cinzel',Georgia,serif" }}>{bibleBook.name}</p>
+                  </div>
+                  <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+                    {Array.from({length:bibleBook.chapters},(_,i)=>i+1).map(ch => (
+                      <button key={ch} onClick={() => setBibleChapter(ch)} style={{ background:GOLD_FAINT, border:`1px solid ${GOLD_DIM}`, borderRadius:8, padding:"6px 10px", color:GOLD, fontSize:11, cursor:"pointer", fontFamily:"Georgia,serif", minWidth:36, textAlign:"center" }}>{ch}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {bibleBook && bibleChapter && (
+                <div>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+                    <button onClick={() => setBibleChapter(null)} style={{ background:"transparent", border:"none", color:"#8b6914", cursor:"pointer", fontSize:11, fontFamily:"Georgia,serif" }}>← Chapitres</button>
+                    <p style={{ color:GOLD, fontSize:14, fontWeight:"bold", margin:0, fontFamily:"'Cinzel',Georgia,serif" }}>{bibleBook.name} {bibleChapter}</p>
+                  </div>
+                  <div style={{ background:"rgba(201,168,76,0.05)", border:`1px solid ${GOLD_FAINT}`, borderRadius:10, padding:"12px", textAlign:"center" }}>
+                    <p style={{ color:"#8b6914", fontSize:11, fontStyle:"italic", lineHeight:1.7, margin:0, fontFamily:"'EB Garamond',Georgia,serif" }}>Lecture de {bibleBook.name} chapitre {bibleChapter}</p>
+                    <a href={`https://www.biblegateway.com/passage/?search=${bibleBook.abbr}+${bibleChapter}&version=LSG`} target="_blank" rel="noopener noreferrer" style={{ display:"inline-block", marginTop:12, background:`linear-gradient(135deg, ${GOLD}, #a87a2a)`, color:"#1a0f00", border:"none", borderRadius:10, padding:"8px 18px", fontSize:11, fontFamily:"'Cinzel',Georgia,serif", textDecoration:"none", letterSpacing:1 }}>
+                      📖 Ouvrir dans Bible Gateway
+                    </a>
+                  </div>
+                </div>
+              )}
+            </Card>
+            {/* Verse scroll banner */}
+            <Card style={{ cursor:"pointer" }} onClick={() => setBibleVerseScroll(v=>!v)}>
+              <Label accent>{t.scrollVerses}</Label>
+              <p style={{ color:textColor, fontSize:14, fontStyle:"italic", lineHeight:1.7, margin:"0 0 6px", fontFamily:"'EB Garamond',Georgia,serif" }}>« {PRAYER_VERSES[verseScrollIdx].text} »</p>
+              <p style={{ color:"#8b6914", fontSize:10, margin:0, fontFamily:"Georgia,serif" }}>— {PRAYER_VERSES[verseScrollIdx].ref} · {bibleVerseScroll?"Auto-défilement actif":"Taper pour activer"}</p>
+            </Card>
+          </div>
+        )}
+
+        {/* ─── TAB 6: Journal ─── */}
+        {tab===6 && (
+          <div className="fade-in">
+            <Card>
+              <Label accent>{t.journal}</Label>
+              <div style={{ display:"flex", gap:6, marginBottom:8 }}>
+                {["🙏","🔥","💪","😢","✨","🌅"].map(m => (
+                  <button key={m} onClick={() => setJMood(m)} style={{ background:jMood===m?GOLD_GLOW:"transparent", border:`1px solid ${jMood===m?GOLD:GOLD_DIM}`, borderRadius:8, width:32, height:32, cursor:"pointer", fontSize:16 }}>{m}</button>
+                ))}
+              </div>
+              <div style={{ display:"flex", gap:6, marginBottom:8 }}>
+                {["Prière","Intercession","Louange","Délivrance","Action de grâce"].map(cat => (
+                  <button key={cat} onClick={() => setJCategory(cat)} style={{ background:jCategory===cat?GOLD_GLOW:"transparent", border:`1px solid ${jCategory===cat?GOLD:GOLD_DIM}`, borderRadius:10, padding:"3px 8px", color:jCategory===cat?GOLD:"#6b5c3e", fontSize:9, cursor:"pointer", fontFamily:"Georgia,serif" }}>{cat}</button>
+                ))}
+              </div>
+              <textarea value={jText} onChange={e => setJText(e.target.value)} placeholder={t.entry} rows={4} style={{ width:"100%", background:"rgba(201,168,76,0.04)", border:`1px solid ${GOLD_DIM}`, borderRadius:10, padding:"10px", color:textColor, fontSize:13, fontFamily:"'EB Garamond',Georgia,serif", resize:"vertical", outline:"none", lineHeight:1.7, boxSizing:"border-box" }} />
+              <button onClick={saveJournal} style={{ width:"100%", marginTop:8, background:`linear-gradient(135deg, ${GOLD}, #a87a2a)`, border:"none", borderRadius:10, padding:"10px", color:"#1a0f00", fontSize:12, fontWeight:"bold", cursor:"pointer", fontFamily:"'Cinzel',Georgia,serif", letterSpacing:1 }}>{t.save}</button>
+            </Card>
+            {journal.map(e => (
+              <Card key={e.id} style={{ borderLeft:`2px solid ${GOLD_DIM}` }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                  <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+                    <span style={{ fontSize:16 }}>{e.mood}</span>
+                    <div>
+                      <p style={{ color:GOLD, fontSize:9, margin:0, fontFamily:"'Cinzel',Georgia,serif", letterSpacing:1 }}>{e.category}</p>
+                      <p style={{ color:"#6b5c3e", fontSize:8, margin:0, fontFamily:"Georgia,serif" }}>{e.date}</p>
+                    </div>
+                  </div>
+                  <button onClick={() => { const n=journal.filter(x=>x.id!==e.id); setJournal(n); persist("pb-journal",n); }} style={{ background:"transparent", border:"none", color:"#6b5c3e", cursor:"pointer", fontSize:14 }}>×</button>
+                </div>
+                <p style={{ color:textColor, fontSize:13, lineHeight:1.7, margin:0, fontFamily:"'EB Garamond',Georgia,serif" }}>{e.text}</p>
+              </Card>
+            ))}
+            {journal.length===0 && <p style={{ color:"#6b5c3e", textAlign:"center", padding:"20px 0", fontSize:12 }}>Aucune entrée dans le journal.</p>}
+          </div>
+        )}
+
+        {/* ─── TAB 7: Stats ─── */}
+        {tab===7 && (
+          <div className="fade-in">
+            <Card>
+              <Label accent>{t.stats}</Label>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                {[
+                  { label:t.totalPrayers, value:totalPrayers, icon:"🙏" },
+                  { label:t.completedPrayers, value:completedCount, icon:"✓" },
+                  { label:t.journalCount, value:journal.length, icon:"✏" },
+                  { label:t.favoriteCount, value:favCount, icon:"⭐" },
+                  { label:t.sessionCount, value:sessCount, icon:"▶" },
+                  { label:"Taux", value:`${totalPrayers>0?Math.round(completedCount/totalPrayers*100):0}%`, icon:"📊" },
+                ].map((stat,i) => (
+                  <div key={i} style={{ background:"rgba(201,168,76,0.06)", border:`1px solid ${GOLD_DIM}`, borderRadius:10, padding:"12px 10px", textAlign:"center" }}>
+                    <div style={{ fontSize:22 }}>{stat.icon}</div>
+                    <div style={{ color:GOLD, fontSize:20, fontFamily:"'Cinzel',Georgia,serif", fontWeight:"bold" }}>{stat.value}</div>
+                    <div style={{ color:"#6b5c3e", fontSize:9, fontFamily:"Georgia,serif", marginTop:2 }}>{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+            <Card>
+              <Label accent>PROGRESSION GLOBALE</Label>
+              <ProgressBar value={completedCount} max={totalPrayers} style={{ marginBottom:8 }} />
+              <p style={{ color:"#8b6914", fontSize:10, textAlign:"right", fontFamily:"Georgia,serif" }}>{completedCount}/{totalPrayers} prières accomplies</p>
+            </Card>
+            <Card>
+              <Label accent>⏱ TEMPS CONSACRÉ AUJOURD'HUI</Label>
+              <div style={{ marginBottom:10 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                  <span style={{ color:"#8b6914", fontSize:11, fontFamily:"Georgia,serif" }}>🙏 Prière</span>
+                  <span style={{ color:GOLD, fontSize:11, fontFamily:"Georgia,serif" }}>{prayerTimeDone}/{prayerTimeGoal} min</span>
+                </div>
+                <ProgressBar value={prayerTimeDone} max={prayerTimeGoal} />
+              </div>
+              <div>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                  <span style={{ color:"#8b6914", fontSize:11, fontFamily:"Georgia,serif" }}>📖 Lecture</span>
+                  <span style={{ color:"#4fc3f7", fontSize:11, fontFamily:"Georgia,serif" }}>{bibleTimeDone}/{bibleTimeGoal} min</span>
+                </div>
+                <ProgressBar value={bibleTimeDone} max={bibleTimeGoal} color="#4fc3f7" />
+              </div>
+            </Card>
+            {/* Voice settings */}
+            {voices.length > 0 && (
+              <Card>
+                <Label accent>{t.voices}</Label>
+                <select value={selectedVoice?.name||""} onChange={e => setSelectedVoice(voices.find(v=>v.name===e.target.value)||null)} style={{ width:"100%", background:"rgba(201,168,76,0.06)", border:`1px solid ${GOLD_DIM}`, borderRadius:8, padding:"7px", color:textColor, fontSize:12, fontFamily:"Georgia,serif" }}>
+                  {voices.map(v => <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>)}
+                </select>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* ─── TAB 8: Défis ─── */}
+        {tab===8 && (
+          <div className="fade-in">
+            <Card>
+              <Label accent>{t.dailyChallenges}</Label>
+              {challenges.daily.map((c,i) => (
+                <div key={i} style={{ marginBottom:12 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+                    <p style={{ color:c.completed?GOLD:textColor, fontSize:12, margin:0, fontFamily:"Georgia,serif", textDecoration:c.completed?"line-through":"none" }}>{c.label}</p>
+                    {c.completed && <span style={{ color:GOLD, fontSize:10 }}>{t.challengeDone}</span>}
+                  </div>
+                  <ProgressBar value={c.progress} max={c.target} color={c.completed?GOLD:"#52b788"} />
+                  <p style={{ color:"#6b5c3e", fontSize:9, margin:"4px 0 0", textAlign:"right", fontFamily:"Georgia,serif" }}>{c.progress}/{c.target} {c.unit}</p>
+                </div>
+              ))}
+            </Card>
+            <Card>
+              <Label accent>{t.weeklyChallenges}</Label>
+              {challenges.weekly.map((c,i) => (
+                <div key={i} style={{ marginBottom:12 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+                    <p style={{ color:c.completed?GOLD:textColor, fontSize:12, margin:0, fontFamily:"Georgia,serif", textDecoration:c.completed?"line-through":"none" }}>{c.label}</p>
+                    {c.completed && <span style={{ color:GOLD, fontSize:10 }}>{t.challengeDone}</span>}
+                  </div>
+                  <ProgressBar value={c.progress} max={c.target} color={c.completed?GOLD:"#ba68c8"} />
+                  <p style={{ color:"#6b5c3e", fontSize:9, margin:"4px 0 0", textAlign:"right", fontFamily:"Georgia,serif" }}>{c.progress}/{c.target} {c.unit}</p>
+                </div>
+              ))}
+            </Card>
+          </div>
+        )}
+
+        {/* ─── TAB 9: Éloges & Méditations ─── */}
+        {tab===9 && (
+          <div className="fade-in">
+            <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+              {["🕊 Éloges","📖 Méditations"].map((label,i) => (
+                <Btn key={i} active={meditTab===i} onClick={() => setMeditTab(i)}>{label}</Btn>
+              ))}
+            </div>
+
+            {meditTab===0 && (
+              <div>
+                <Card style={{ marginBottom:10 }}>
+                  <Label accent>{t.praisesTitle}</Label>
+                  <p style={{ color:"#c8b890", fontSize:12, lineHeight:1.6, margin:0, fontFamily:"'EB Garamond',Georgia,serif", fontStyle:"italic" }}>{t.praisesSub}</p>
+                </Card>
+                <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:10 }}>
+                  {praiseCats.map(c => <Btn key={c} small active={praiseCatFilter===c} onClick={() => setPraiseCatFilter(c)}>{c}</Btn>)}
+                </div>
+                {PRAISES.filter(p => praiseCatFilter==="Tous" || p.cat===praiseCatFilter).map((p,i) => (
+                  <Card key={i} style={{ borderLeft:`3px solid ${GOLD_DIM}` }}>
+                    <div style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
+                      <span style={{ fontSize:24, flexShrink:0 }}>{p.icon}</span>
+                      <div style={{ flex:1 }}>
+                        <p style={{ color:"#8b6914", fontSize:9, letterSpacing:1, margin:"0 0 5px" }}>{p.cat} · {p.ref}</p>
+                        <p style={{ color:textColor, fontSize:15, lineHeight:1.8, fontStyle:"italic", margin:"0 0 10px", fontFamily:"'EB Garamond',Georgia,serif" }}>« {p.text} »</p>
+                        <div style={{ display:"flex", gap:8 }}>
+                          <button onClick={() => { speak(p.text); updateChallenge("check"); }} style={{ background:"transparent", border:"none", color:GOLD, cursor:"pointer", fontSize:11, fontFamily:"Georgia,serif" }}>▶ Proclamer</button>
+                          <button onClick={() => copyText(`praise-${i}`,p.text)} style={{ background:"transparent", border:"none", color:copiedId===`praise-${i}`?GOLD:"#6b5c3e", cursor:"pointer", fontSize:11, fontFamily:"Georgia,serif" }}>
+                            {copiedId===`praise-${i}`?"✓":"📋"}
+                          </button>
+                          <button onClick={() => toggleFav(`praise-${i}`,{text:p.text,label:p.cat})} style={{ background:"transparent", border:"none", color:favorites[`praise-${i}`]?GOLD:"#6b5c3e", cursor:"pointer", fontSize:14 }}>
+                            {favorites[`praise-${i}`]?"★":"☆"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {meditTab===1 && (
+              <div>
+                <Card style={{ marginBottom:10 }}>
+                  <Label accent>📖 MÉDITATIONS PROFONDES</Label>
+                  <p style={{ color:"#c8b890", fontSize:12, lineHeight:1.6, margin:0, fontFamily:"'EB Garamond',Georgia,serif", fontStyle:"italic" }}>
+                    Méditez profondément sur ces vérités. Laissez la Parole de Dieu pénétrer votre cœur et transformer votre marche spirituelle.
+                  </p>
+                </Card>
+                {MEDITATIONS.map((m,i) => (
+                  <Card key={i} style={{ cursor:"pointer", borderColor:expandedMedit===i?GOLD:GOLD_DIM }} onClick={() => setExpandedMedit(expandedMedit===i?null:i)}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                      <div>
+                        <p style={{ color:GOLD, fontSize:14, fontWeight:"bold", margin:"0 0 2px", fontFamily:"'Cinzel',Georgia,serif" }}>{m.title}</p>
+                        <p style={{ color:"#8b6914", fontSize:9, margin:0 }}>{m.ref}</p>
+                      </div>
+                      <span style={{ color:GOLD, fontSize:14 }}>{expandedMedit===i?"▲":"▼"}</span>
+                    </div>
+                    {expandedMedit===i && (
+                      <div className="fade-in" onClick={e => e.stopPropagation()}>
+                        <p style={{ color:textColor, fontSize:14, fontStyle:"italic", lineHeight:1.8, margin:"12px 0 10px", borderLeft:`3px solid ${GOLD_DIM}`, paddingLeft:12, fontFamily:"'EB Garamond',Georgia,serif" }}>
+                          « {m.text} »
+                        </p>
+                        <div style={{ background:"rgba(40,30,10,0.5)", borderRadius:10, padding:"10px 12px", marginBottom:10 }}>
+                          <p style={{ color:"#8b6914", fontSize:9, letterSpacing:2, margin:"0 0 6px" }}>RÉFLEXION</p>
+                          <p style={{ color:textColor, fontSize:13, lineHeight:1.7, margin:0, fontFamily:"'EB Garamond',Georgia,serif" }}>{m.reflection}</p>
+                        </div>
+                        <div style={{ display:"flex", gap:8 }}>
+                          <button onClick={() => speak(m.text+". "+m.reflection)} style={{ background:"transparent", border:"none", color:GOLD, cursor:"pointer", fontSize:11, fontFamily:"Georgia,serif" }}>▶ Méditer</button>
+                          {ttsPlaying && <button onClick={stopSpeak} style={{ background:"transparent", border:"none", color:"#e87878", cursor:"pointer", fontSize:11, fontFamily:"Georgia,serif" }}>⏹ Stop</button>}
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── TAB 10: Prières mensuelles ─── */}
+        {tab===10 && (
+          <div className="fade-in">
+            <Card>
+              <Label accent>{t.newMonthTitle}</Label>
+              <InfoBox title="POURQUOI PRIER POUR LE NOUVEAU MOIS ?" icon="📅">
+                Chaque nouveau mois est une porte divine vers de nouvelles opportunités et de nouvelles bénédictions. En consacrant le mois à Dieu dès son commencement, nous plaçons notre temps sous Son autorité et fermons la porte aux attaques de l'ennemi.
+              </InfoBox>
+              <Label>{t.monthlyPrayers}</Label>
+              {MONTH_YEAR_PRAYERS.month.map((p,i) => (
+                <div key={i} style={{ marginBottom:14 }}>
+                  <p style={{ color:GOLD, fontSize:12, margin:"0 0 5px", fontFamily:"'Cinzel',Georgia,serif", letterSpacing:1 }}>{p.title}</p>
+                  <p style={{ color:textColor, fontSize:13, lineHeight:1.7, margin:0, fontFamily:"'EB Garamond',Georgia,serif", borderLeft:`2px solid ${GOLD_DIM}`, paddingLeft:10 }}>{p.text}</p>
+                  <div style={{ display:"flex", gap:8, marginTop:8 }}>
+                    <button onClick={() => speak(p.text)} style={{ background:"transparent", border:"none", color:GOLD, cursor:"pointer", fontSize:11, fontFamily:"Georgia,serif" }}>▶ Lire</button>
+                    <button onClick={() => copyText(`month-${i}`,p.text)} style={{ background:"transparent", border:"none", color:"#6b5c3e", cursor:"pointer", fontSize:11, fontFamily:"Georgia,serif" }}>📋 Copier</button>
+                  </div>
+                </div>
+              ))}
+            </Card>
+            <Card style={{ marginTop:10 }}>
+              <Label accent>{t.newYearTitle}</Label>
+              <InfoBox title="PROPHÉTISER SA NOUVELLE ANNÉE" icon="🎆">
+                La prophétie personnelle est un acte de foi par lequel nous déclarons ce que Dieu a promis pour notre vie. En prophétisant sur votre année, vous activez les promesses divines et positionnez votre vie pour recevoir la plénitude des bénédictions de Dieu.
+              </InfoBox>
+              <Label>{t.yearlyPrayers}</Label>
+              {MONTH_YEAR_PRAYERS.year.map((p,i) => (
+                <div key={i} style={{ marginBottom:14 }}>
+                  <p style={{ color:GOLD, fontSize:12, margin:"0 0 5px", fontFamily:"'Cinzel',Georgia,serif", letterSpacing:1 }}>{p.title}</p>
+                  <p style={{ color:textColor, fontSize:13, lineHeight:1.7, margin:0, fontFamily:"'EB Garamond',Georgia,serif", borderLeft:`2px solid ${GOLD_DIM}`, paddingLeft:10 }}>{p.text}</p>
+                  <div style={{ display:"flex", gap:8, marginTop:8 }}>
+                    <button onClick={() => speak(p.text)} style={{ background:"transparent", border:"none", color:GOLD, cursor:"pointer", fontSize:11, fontFamily:"Georgia,serif" }}>▶ Lire</button>
+                    <button onClick={() => copyText(`year-${i}`,p.text)} style={{ background:"transparent", border:"none", color:"#6b5c3e", cursor:"pointer", fontSize:11, fontFamily:"Georgia,serif" }}>📋 Copier</button>
+                  </div>
+                </div>
+              ))}
+            </Card>
+          </div>
+        )}
+
+      </div>
+
+      {/* ── Footer communautaire */}
+      <div style={{ position:"fixed", bottom:0, left:0, right:0, background:"rgba(6,3,0,0.98)", borderTop:`1px solid ${GOLD_DIM}`, padding:"10px 14px", backdropFilter:"blur(10px)" }}>
+        <p style={{ color:"#6b5c3e", fontSize:8, letterSpacing:2, textAlign:"center", margin:"0 0 7px", fontFamily:"'Cinzel',Georgia,serif" }}>🌐 GROUPES DE PRIÈRE</p>
+        <div style={{ display:"flex", gap:8, justifyContent:"center", flexWrap:"wrap" }}>
+          <a href="https://t.me/+Y2JoRlZ0DVliNWNk" target="_blank" rel="noopener noreferrer"
+            style={{ background:"rgba(0,136,204,0.12)", border:"1px solid rgba(0,136,204,0.3)", borderRadius:18, padding:"5px 14px", color:"#4fc3f7", fontSize:10, textDecoration:"none", fontFamily:"Georgia,serif" }}>
+            ✈ Telegram
+          </a>
+          <a href="https://chat.whatsapp.com/FshwRwqKvYiEBDGptDXoJC?mode=gi_t" target="_blank" rel="noopener noreferrer"
+            style={{ background:"rgba(37,211,102,0.1)", border:"1px solid rgba(37,211,102,0.3)", borderRadius:18, padding:"5px 14px", color:"#69f0ae", fontSize:10, textDecoration:"none", fontFamily:"Georgia,serif" }}>
+            💬 WhatsApp
+          </a>
+        </div>
+      </div>
+
+      <style>{`
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+        ::-webkit-scrollbar { display:none; }
+        * { -webkit-tap-highlight-color: transparent; }
+        select option { background:#1a0f00; color:#e8d4a2; }
+      `}</style>
+    </div>
+  );
+}
